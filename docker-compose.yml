@@ -1,0 +1,13 @@
+services:
+  # Nama service kita: 'redis_db'
+  redis_db:
+    image: redis:alpine             # Kita pakai resep 'redis' versi 'alpine' (versi ringan)
+    container_name: my-project-redis # Nama container biar gampang dicari
+    restart: always                 # Kalau error/PC restart, dia nyala sendiri
+    ports:
+      - "6379:6379"                 # Buka pintu 6379 supaya bisa diakses NestJS
+    volumes:
+      - redis_data:/data            # Simpan data di harddisk (biar kalau restart data gak ilang)
+
+volumes:
+  redis_data:                       # Definisi tempat penyimpanan
