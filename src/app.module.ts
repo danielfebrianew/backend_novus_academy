@@ -13,6 +13,7 @@ import Redis from 'ioredis';
 import { HistoryModule } from './history/history.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { AccountsModule } from './accounts/accounts.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -71,6 +72,7 @@ import { AccountsModule } from './accounts/accounts.module';
     HistoryModule,
     SchedulerModule,
     AccountsModule,
+    ReportsModule,
   ],
   controllers: [],
   providers: [{
