@@ -9,51 +9,40 @@ import { VideoMixerModule } from './video-mixer/video-mixer.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
+import Redis from 'ioredis';
 import { HistoryModule } from './history/history.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
+import { AccountsModule } from './accounts/accounts.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true
+      isGlobal: true,
     }),
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        throttlers: [
-          {
-            name: 'short',
-            ttl: 1000, // 1 detik
-            limit: 3,  // Maks 3 request per detik 
-          },
-          {
-            name: 'medium',
-            ttl: 10000, // 10 detik
-            limit: 20,
-          },
-          {
-            name: 'heavy',
-            ttl: 60000, // 1 menit
-            limit: 3,
-          },
-          {
-            name: 'auth', // <--- INI KHUSUS LOGIN
-            ttl: 60000, // 60 detik (1 menit)
-            limit: 5,   // Maks 5 kali coba login per menit
-          },
-          {
-            name: 'upload',
-            ttl: 60000,
-            limit: 5, // Maks 5 kali upload per menit
-          }
-        ],
-        storage: new ThrottlerStorageRedisService({
-          host: config.get<string>('REDIS_HOST'),
-          port: parseInt(config.get<string>('REDIS_PORT') || '6379'),
-          password: config.get<string>('REDIS_PASSWORD'),
-        }),
-      }),
+      useFactory: (config: ConfigService) => {
+        const redisUrl = config.get<string>('REDIS_URL') || 'redis://localhost:6379'; 
+
+        const isTls = redisUrl.startsWith('rediss://');
+
+        return {
+          throttlers: [
+            {
+              name: 'default',
+              ttl: 1000,    // 1 detik
+              limit: 20,    // 20 request
+            },
+          ],
+          storage: new ThrottlerStorageRedisService(
+            new Redis(redisUrl, {
+              family: 4,
+              tls: isTls ? { rejectUnauthorized: false } : undefined,
+            })
+          ),
+        };
+      },
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -69,11 +58,8 @@ import { SchedulerModule } from './scheduler/scheduler.module';
           password: configService.get<string>('DB_PASSWORD'),
           database: configService.get<string>('DB_NAME'),
           autoLoadEntities: true,
-          // --- THE SWITCH ---
           synchronize: !isProduction,
           logging: !isProduction,
-          // Opsi tambahan: SSL (Biasanya Prod butuh SSL kalau database beda server)
-          // ssl: isProduction ? { rejectUnauthorized: false } : null, 
         };
       },
     }),
@@ -84,6 +70,7 @@ import { SchedulerModule } from './scheduler/scheduler.module';
     VideoMixerModule,
     HistoryModule,
     SchedulerModule,
+    AccountsModule,
   ],
   controllers: [],
   providers: [{

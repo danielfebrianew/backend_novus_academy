@@ -18,8 +18,9 @@ async function bootstrap() {
     password: process.env.REDIS_PASSWORD,
     socket: {
       host: process.env.REDIS_HOST,
-      port: parseInt(process.env.REDIS_PORT || '19751'),
-      family: 4,
+      port: parseInt(process.env.REDIS_PORT || '6379'),
+      tls: true,
+      rejectUnauthorized: false,
       reconnectStrategy: (retries) => Math.min(retries * 50, 1000),
     },
   });

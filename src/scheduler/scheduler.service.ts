@@ -17,18 +17,33 @@ export class SchedulerService {
   }
 
   // 2. GET ALL PENDING
-  async findAllPending() {
+  async findAllPending(accountId?: number) {
+    const whereCondition: any = { statusPost: PostStatus.PENDING };
+    
+    // Kalau frontend kirim accountId, kita filter. Kalau tidak, tampilkan semua (opsional)
+    if (accountId) {
+        whereCondition.accountId = accountId;
+    }
+
     return await this.repo.find({
-      where: { statusPost: PostStatus.PENDING },
-      order: { scheduledTime: 'ASC' } // Yang mau tayang duluan di atas
+      where: whereCondition,
+      order: { scheduledTime: 'ASC' },
+      relations: ['account'] // Kita load data akunnya juga biar frontend tau
     });
   }
 
   // --- [BARU] 2.5 GET ALL COMPLETED (HISTORY) ---
-  async findAllDone() {
+  async findAllDone(accountId?: number) {
+    const whereCondition: any = { statusPost: PostStatus.DONE };
+
+    if (accountId) {
+        whereCondition.accountId = accountId;
+    }
+
     return await this.repo.find({
-      where: { statusPost: PostStatus.DONE },
-      order: { scheduledTime: 'DESC' } // Yang baru selesai tayang paling atas
+      where: whereCondition,
+      order: { scheduledTime: 'DESC' },
+      relations: ['account']
     });
   }
 

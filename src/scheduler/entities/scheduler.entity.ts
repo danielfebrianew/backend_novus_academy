@@ -1,4 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
+import { Account } from 'src/accounts/entities/account.entity';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, Index, ManyToOne, JoinColumn } from 'typeorm';
 
 export enum PostStatus {
   PENDING = 'PENDING',
@@ -12,7 +13,14 @@ export class Scheduler {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Index() // Biar query bot cepet
+  @Column({ name: 'account_id', nullable: true })
+  accountId: number;
+
+  @ManyToOne(() => Account, (account) => account.schedulers, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'account_id' })
+  account: Account;
+
+  @Index()
   @Column({ type: 'timestamp' })
   scheduledTime: Date;
 

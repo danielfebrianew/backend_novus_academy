@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, UseInterceptors, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, UseInterceptors, UseGuards, Query } from '@nestjs/common';
 import { SchedulerService } from './scheduler.service';
 import { PostStatus } from './entities/scheduler.entity';
 import { ResponseInterceptor } from 'src/common/interceptors/response.interceptor';
@@ -19,13 +19,16 @@ export class SchedulerController {
 
   @Get('pending')
   @ResponseMessage('Berhasil mengambil data semua postingan pending')
-  getAllPending() {
-    return this.schedulerService.findAllPending();
+  getAllPending(@Query('accountId') accountId?: string) {
+    const id = accountId ? +accountId : undefined;
+    return this.schedulerService.findAllPending(id);
   }
 
   @Get('done')
-  findAllCompleted() {
-    return this.schedulerService.findAllDone();
+  @ResponseMessage('Berhasil mengambil history')
+  findAllCompleted(@Query('accountId') accountId?: string) {
+    const id = accountId ? +accountId : undefined;
+    return this.schedulerService.findAllDone(id);
   }
 
   @Get(':id')
