@@ -1,7 +1,5 @@
-import { Controller, Get, Post, Body, Query, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, UseInterceptors, BadRequestException } from '@nestjs/common';
 import { ReportsService } from './reports.service';
-import { CreateReportDto } from './dto/create-report.dto';
-import { FilterReportDto } from './dto/filter-report.dto';
 import { ResponseInterceptor } from 'src/common/interceptors/response.interceptor';
 import { AuthenticatedGuard } from 'src/auth/guards/authenticated.guard';
 
@@ -11,22 +9,19 @@ import { AuthenticatedGuard } from 'src/auth/guards/authenticated.guard';
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
-  @Post()
-  create(@Body() createReportDto: CreateReportDto) {
-    return this.reportsService.create(createReportDto);
-  }
+  // GET /reports/view-tiktok?accountId=4&startDate=2025-12-19&endDate=2025-12-25
+  @Get('view-tiktok')
+  async viewTiktokData(@Query() query: any) {
+    if (!query.accountId || !query.startDate || !query.endDate) {
+        throw new BadRequestException('Required: accountId, startDate, endDate');
+    }
 
-  // API untuk Table History
-  // GET /reports?startDate=2024-01-01&endDate=2024-01-31
-  @Get()
-  findAll(@Query() filter: FilterReportDto) {
-    return this.reportsService.findAll(filter);
-  }
-
-  // API untuk Scorecard / Chart Summary
-  // GET /reports/summary?startDate=2024-01-01&endDate=2024-01-31
-  @Get('summary')
-  getSummary(@Query() filter: FilterReportDto) {
-    return this.reportsService.getSummary(filter);
+    // PERBAIKAN DI SINI:
+    // Bungkus jadi 1 object, dan biarkan Service yang mengubah string ke Date
+    return this.reportsService.getTiktokData({
+        accountId: Number(query.accountId), // Pastikan jadi number
+        startDate: query.startDate,         // Kirim string "2025-12-19"
+        endDate: query.endDate              // Kirim string "2025-12-25"
+    });
   }
 }
