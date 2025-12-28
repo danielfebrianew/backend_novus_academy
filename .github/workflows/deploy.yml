@@ -36,7 +36,7 @@ jobs:
             npm run build
 
             npm ci --omit=dev
-            pm2 reload backend --silent
+            pm2 reload backend --update-env --silent
 
             exit
           "
