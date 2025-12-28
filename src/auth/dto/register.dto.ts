@@ -24,4 +24,4 @@ export class RegisterDto {
   @IsOptional()
   @Transform(({ value }) => value === '' ? null : value)
   referralCode?: string;
-}
+} 
