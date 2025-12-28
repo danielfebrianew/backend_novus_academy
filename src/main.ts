@@ -29,7 +29,7 @@ async function bootstrap() {
   await redisClient.connect().catch(console.error);
 
   app.enableCors({
-    origin: ['http://localhost:3001', 'https://member.novusnextgen.com/'],
+    origin: ['http://localhost:3001', 'https://member.novusnextgen.com'],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
     allowedHeaders: 'Content-Type, Accept, Authorization',
