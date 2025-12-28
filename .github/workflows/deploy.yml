@@ -22,7 +22,9 @@ jobs:
 
       - name: Deploy ke VPS
         run: |
-          ssh -tt deploy@server << 'EOF'
+          ssh -tt ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            set -e
+
             cd /var/www/backend
 
             export NVM_DIR="$HOME/.nvm"
