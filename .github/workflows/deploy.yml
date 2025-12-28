@@ -22,13 +22,13 @@ jobs:
 
       - name: Deploy ke VPS
         run: |
-          ssh -tt ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+          ssh -tt ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "
             set -e
 
             cd /var/www/backend
 
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+            export NVM_DIR=\$HOME/.nvm
+            [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"
 
             git pull origin development
 
@@ -36,5 +36,7 @@ jobs:
             npm run build
 
             npm ci --omit=dev
-            pm2 restart backend
-          EOF
+            pm2 reload backend --silent
+
+            exit
+          "
