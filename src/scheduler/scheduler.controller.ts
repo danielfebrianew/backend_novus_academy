@@ -7,7 +7,7 @@ import { AuthenticatedGuard } from '../auth/guards/authenticated.guard';
 
 @Controller('scheduler')
 @UseInterceptors(ResponseInterceptor)
-@UseGuards(AuthenticatedGuard) // Hanya user login
+// @UseGuards(AuthenticatedGuard) // Hanya user login
 export class SchedulerController {
   constructor(private readonly schedulerService: SchedulerService) {}
 

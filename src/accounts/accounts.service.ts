@@ -11,12 +11,18 @@ export class AccountsService {
   ) {}
 
   // Create Account Baru
-  async create(data: Partial<Account>) {
-    // Cek duplikat username
+  async create(data: Partial<Account>, userId: number) {
+    // 1. Cek Duplikat
     const existing = await this.repo.findOne({ where: { username: data.username } });
-    if (existing) throw new ConflictException('Username sudah terdaftar');
+    if (existing) {
+      throw new ConflictException(`Username '${data.username}' sudah terdaftar`);
+    }
 
-    const account = this.repo.create(data);
+    // 2. Gabungkan data akun dengan userId saat create
+    const account = this.repo.create({
+      ...data,
+      userId: userId, // Pastikan di Entity nama kolomnya 'userId'
+    });
     return await this.repo.save(account);
   }
 

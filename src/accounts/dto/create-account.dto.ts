@@ -21,5 +21,5 @@ export class CreateAccountDto {
 
   @IsOptional()
   @IsString()
-  status?: string; // Opsional, karena di entity sudah default 'ACTIVE'
+  status?: string;
 }
