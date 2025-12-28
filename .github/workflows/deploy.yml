@@ -22,28 +22,17 @@ jobs:
 
       - name: Deploy ke VPS
         run: |
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-            set -e
-
+          ssh -tt deploy@server << 'EOF'
             cd /var/www/backend
 
             export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 
-            node -v
-            npm -v
+            git pull origin development
 
-            echo "Pull latest code"
-            git pull
-
-            echo "Install dependencies"
-            npm install --production
-
-            echo "Build NestJS"
+            npm ci
             npm run build
 
-            echo "Reload PM2"
-            pm2 reload backend
-
-            pm2 save
+            npm ci --omit=dev
+            pm2 restart backend
           EOF
