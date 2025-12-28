@@ -10,6 +10,13 @@ import helmet from 'helmet';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.enableCors({
+    origin: ['http://localhost:3001', 'https://member.novusnextgen.com'],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
+    allowedHeaders: 'Content-Type, Accept, Authorization',
+  });
+
   app.enableShutdownHooks();
 
   app.use(helmet());
@@ -28,13 +35,6 @@ async function bootstrap() {
   redisClient.on('error', (err) => console.error('Redis Client Error', err));
 
   await redisClient.connect().catch(console.error);
-
-  app.enableCors({
-    origin: ['http://localhost:3001', 'https://member.novusnextgen.com'],
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    credentials: true,
-    allowedHeaders: 'Content-Type, Accept, Authorization',
-  });
 
   app.use(
     session({
