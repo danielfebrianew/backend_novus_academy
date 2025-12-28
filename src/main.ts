@@ -26,6 +26,7 @@ async function bootstrap() {
   });
 
   redisClient.on('error', (err) => console.error('Redis Client Error', err));
+
   await redisClient.connect().catch(console.error);
 
   app.enableCors({
