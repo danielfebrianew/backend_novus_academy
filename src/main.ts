@@ -19,7 +19,9 @@ async function bootstrap() {
 
   app.enableShutdownHooks();
 
-  app.use(helmet());
+  app.use(helmet({
+    crossOriginResourcePolicy: false, 
+  }));
 
   const redisClient = createClient({
     password: process.env.REDIS_PASSWORD,
