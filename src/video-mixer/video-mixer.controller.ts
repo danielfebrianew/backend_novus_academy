@@ -24,7 +24,7 @@ export class VideoMixerController {
       ],
       {
         storage: diskStorage({
-          destination: './uploads', 
+          destination: './uploads', // Upload mentah tetap di folder temporary project
           filename: (req, file, cb) => {
             const randomName = Array(32).fill(null).map(() => (Math.round(Math.random() * 16)).toString(16)).join('');
             cb(null, `${randomName}${extname(file.originalname)}`);
@@ -35,7 +35,8 @@ export class VideoMixerController {
   )
   async stitchVideo(
     @UploadedFiles() files: { clips?: Express.Multer.File[], audio?: Express.Multer.File[] },
-    @Body('variations') variations: string 
+    @Body('variations') variations: string,
+    @Body('outputDir') outputDir: string // <--- 1. Tangkap outputDir dari Frontend
   ) {
     if (!files.clips || files.clips.length < 2) {
       throw new BadRequestException('Minimal upload 2 video klip.');
@@ -48,12 +49,16 @@ export class VideoMixerController {
     const clipPaths = files.clips.map(file => file.path);
     const audioPath = files.audio[0].path;
     const targetVar = parseInt(variations) || 1;
+    
+    // Fallback: Jika user tidak isi (harusya divalidasi frontend), pakai folder default
+    const targetOutputDir = outputDir || './output'; 
 
-    // Panggil Service
+    // Panggil Service dengan targetOutputDir
     const result = await this.videoService.generateStitchedVideos(
       clipPaths,
       audioPath,
-      targetVar
+      targetVar,
+      targetOutputDir // <--- 2. Kirim ke service
     );
 
     return result;

@@ -7,27 +7,38 @@ import { VideoUtilsHelper } from './helpers/video-utils.helper';
 
 @Injectable()
 export class VideoMixerService {
-  private readonly tempDir = path.resolve('./temp'); // Pastikan folder ini ada/dibuat
-  private readonly outputDir = path.resolve('./output'); // Folder hasil
+  private readonly tempDir = path.resolve('./temp'); 
 
   constructor(private readonly videoUtilsHelper: VideoUtilsHelper) {
-    // Pastikan folder temp dan output ada
     if (!fs.existsSync(this.tempDir)) fs.mkdirSync(this.tempDir);
-    if (!fs.existsSync(this.outputDir)) fs.mkdirSync(this.outputDir);
   }
 
   async generateStitchedVideos(
     clipPaths: string[], 
     audioPath: string, 
-    targetVariations: number = 1
+    targetVariations: number = 1,
+    customOutputDir: string
   ) {
-    const PROCESS_ID = uuidv4().split('-')[0]; // ID unik pendek
-    const cleanupFiles: string[] = [];
+    const PROCESS_ID = uuidv4().split('-')[0]; 
     
+    // 1. List file yang WAJIB dihapus di akhir (Input Uploads + Temp Files)
+    // Masukkan file upload user (yang ada di folder uploads) ke daftar hapus
+    const filesToDelete: string[] = [...clipPaths, audioPath];
+    
+    const finalOutputDir = path.resolve(customOutputDir);
+
+    if (!fs.existsSync(finalOutputDir)) {
+        try {
+            fs.mkdirSync(finalOutputDir, { recursive: true });
+        } catch (e) {
+            console.error("Gagal membuat folder output:", e);
+            throw new InternalServerErrorException(`Gagal membuat folder output di: ${customOutputDir}`);
+        }
+    }
+
     try {
       this.logProgress(PROCESS_ID, 'Mengenerate urutan unik...', 10);
       
-      // Menggunakan helper kamu untuk generate order
       const uniqueOrders = this.videoUtilsHelper.generateUniqueShuffles(
         clipPaths.length, 
         targetVariations
@@ -41,26 +52,21 @@ export class VideoMixerService {
         const order = uniqueOrders[i];
         const orderedPaths = order.map((index) => clipPaths[index]);
 
-        // --- A. Stitch Visual (Menggunakan Helper Kamu) ---
         const tempVisualPath = path.join(this.tempDir, `vis_${PROCESS_ID}_${i}.mp4`);
-        cleanupFiles.push(tempVisualPath);
+        
+        // Masukkan file intermediate (temp visual) ke daftar hapus juga
+        filesToDelete.push(tempVisualPath);
 
-        // Panggil helper mergeVideoFiles yang sudah ada
         await this.videoUtilsHelper.mergeVideoFiles(orderedPaths, tempVisualPath);
 
-        // --- B. Merge Audio (Logic Kamu) ---
         const finalFileName = `VARIATION_${PROCESS_ID}_${i + 1}.mp4`;
-        const finalVarPath = path.join(this.outputDir, finalFileName); // Simpan ke output dir
+        const finalVarPath = path.join(finalOutputDir, finalFileName); 
 
         await new Promise((resolve, reject) => {
           ffmpeg()
             .input(tempVisualPath)
             .input(audioPath)
-            // Opsi ffmpeg sesuai requestmu
-            // Note: -c:v copy hanya berhasil jika semua video punya codec/resolusi sama persis
-            // Jika error, ganti '-c:v copy' menjadi '-c:v libx264' (tapi lebih lama render)
             .outputOptions(['-c:v copy', '-c:a aac', '-map 0:v:0', '-map 1:a:0'])
-            // Opsional: Jika audio lebih pendek dari video, gunakan '-stream_loop -1' sebelum input audio
             .save(finalVarPath)
             .on('end', () => {
               resultPaths.push(finalVarPath);
@@ -85,13 +91,19 @@ export class VideoMixerService {
       console.error(error);
       throw new InternalServerErrorException('Gagal memproses video');
     } finally {
-        // --- C. Cleanup (Hapus file temp visual, biarkan hasil akhir) ---
-        // Uncomment jika ingin auto-delete temp files
-        /*
-        cleanupFiles.forEach(file => {
-            if (fs.existsSync(file)) fs.unlinkSync(file);
+        // --- CLEANUP EKSEKUTOR ---
+        // Ini akan menghapus file di 'uploads/' DAN file di 'temp/'
+        console.log(`[${PROCESS_ID}] Membersihkan ${filesToDelete.length} file temporary & uploads...`);
+        
+        filesToDelete.forEach(filePath => {
+            if (fs.existsSync(filePath)) {
+                try {
+                    fs.unlinkSync(filePath);
+                } catch (err) {
+                    console.error(`Gagal menghapus file: ${filePath}`, err);
+                }
+            }
         });
-        */
     }
   }
 
