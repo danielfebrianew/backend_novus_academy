@@ -14,6 +14,7 @@ import { HistoryModule } from './history/history.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { AccountsModule } from './accounts/accounts.module';
 import { ReportsModule } from './reports/reports.module';
+import { UploadAwsModule } from './upload-aws/upload-aws.module';
 
 @Module({
   imports: [
@@ -73,6 +74,7 @@ import { ReportsModule } from './reports/reports.module';
     SchedulerModule,
     AccountsModule,
     ReportsModule,
+    UploadAwsModule,
   ],
   controllers: [],
   providers: [{
