@@ -21,7 +21,7 @@ export class UploadAwsService {
 
     await this.s3Client.send(
       new PutObjectCommand({
-        Bucket: process.env.AWS_S3_BUCKET!,
+        Bucket: process.env.AWS_BUCKET_NAME!,
         Key: fileKey,
         Body: file.buffer,
         ContentType: file.mimetype,
@@ -31,7 +31,7 @@ export class UploadAwsService {
 
     return {
       key: fileKey,
-      url: `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`,
+      url: `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`,
     };
   }
 }
