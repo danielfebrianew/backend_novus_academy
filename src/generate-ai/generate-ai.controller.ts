@@ -71,20 +71,22 @@ export class GenerateAiController {
   @ResponseMessage('Video sedang diproses')
   async generateVideo(@Body() dto: GenerateVideoDto, @Req() req: any) {
     const count = dto.prompts.length;
+    const userId = req.session.user.id;
+
     if (![4, 5, 6].includes(count)) {
       throw new BadRequestException(`Jumlah prompt harus 4, 5, atau 6. Kamu kirim ${count}.`);
     }
 
     const result = await this.generateAiService.processVideoVariations(
       dto.images,
+      dto.productName,
       dto.prompts,
       dto.script,
       dto.jobId,
       dto.targetCount,
-      dto.voiceGender || 'female'
+      dto.voiceGender || 'female',
+      userId  
     );
-
-    const userId = req.session.user.id;
 
     const inputSummary = {
       jobId: dto.jobId,

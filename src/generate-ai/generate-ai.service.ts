@@ -9,6 +9,7 @@ import { WavespeedVideoService } from './services/wavespeed-video.service';
 import { GeminiTtsService } from './services/gemini-tts.service';
 import { FfmpegMixService } from './services/ffmpeg-mixer.service';
 import { VideoUtilsHelper } from './helpers/video-utils.helper';
+import { GalleryService } from 'src/gallery/gallery.service';
 
 @Injectable()
 export class GenerateAiService implements OnModuleInit {
@@ -23,6 +24,7 @@ export class GenerateAiService implements OnModuleInit {
     private wavespeedVideo: WavespeedVideoService,
     private geminiTts: GeminiTtsService,
     private ffmpegMix: FfmpegMixService,
+    private galleryService: GalleryService,
   ) {
     if (!fs.existsSync(this.tempDir)) fs.mkdirSync(this.tempDir);
   }
@@ -53,7 +55,7 @@ export class GenerateAiService implements OnModuleInit {
     });
   }
 
-  // ✅ Method ini sudah PERFECT!
+  // Method ini sudah PERFECT!
   private logProgress(jobId: string, message: string, progress: number) {
     this.logger.log(`[${jobId}] ${message}`);
     this.eventEmitter.emit('job.progress', { jobId, message, progress });
@@ -73,7 +75,7 @@ export class GenerateAiService implements OnModuleInit {
     return await this.openaiScript.analyzeImageAndCreateScript(imageUrl, count, product);
   }
 
-  async processVideoVariations(images: string[], prompts: string[], script: string, jobId: string, targetCount: number, voiceGender: string) {
+  async processVideoVariations(images: string[], productName: string,prompts: string[], script: string, jobId: string, targetCount: number, voiceGender: string, userId: number) {
     let cleanupFiles: string[] = [];
     const promptCount = prompts.length;
 
@@ -90,7 +92,7 @@ export class GenerateAiService implements OnModuleInit {
 
     this.logger.log(`Job ${jobId}: Gender '${voiceGender}' -> Selected Voice: '${voiceName}'`);
 
-    // ✅ Validation
+    // Validation
     switch (promptCount) {
       case 4:
         if (targetCount < 4 || targetCount > 20) {
@@ -131,7 +133,7 @@ export class GenerateAiService implements OnModuleInit {
         }
       });
 
-      // ✅ STEP 3: Generate audio in parallel (5-15%)
+      //  STEP 3: Generate audio in parallel (5-15%)
       this.logProgress(jobId, "Generating voiceover...", 10);
 
       const audioTask = this.geminiTts.generateAudio(script, this.tempDir, voiceName);
@@ -142,7 +144,7 @@ export class GenerateAiService implements OnModuleInit {
       ]);
       cleanupFiles.push(audioPath);
 
-      // ✅ STEP 4: Validate clips (15-20%)
+      // STEP 4: Validate clips (15-20%)
       this.logProgress(jobId, "Validating video clips...", 15);
 
       const successVideos = videoResults
@@ -153,7 +155,7 @@ export class GenerateAiService implements OnModuleInit {
         throw new Error(`Failed to generate all video clips. Got ${successVideos.length}/${promptCount}`);
       }
 
-      // ✅ STEP 5: Download clips (20-40%)
+      //  STEP 5: Download clips (20-40%)
       this.logProgress(jobId, `Downloading ${successVideos.length} clips...`, 20);
 
       const rawClipPaths: string[] = [];
@@ -163,7 +165,7 @@ export class GenerateAiService implements OnModuleInit {
         const vid = successVideos[i];
         const rawFileName = path.join(this.tempDir, `raw_${jobId}_${vid.index}.mp4`);
 
-        // ✅ Progress per clip: 20% -> 40% (20% range / totalClips)
+        //  Progress per clip: 20% -> 40% (20% range / totalClips)
         const downloadProgress = 20 + Math.floor(((i + 1) / totalClips) * 20);
         this.logProgress(jobId, `Downloading clip ${i + 1}/${totalClips}...`, downloadProgress);
 
@@ -172,14 +174,14 @@ export class GenerateAiService implements OnModuleInit {
         cleanupFiles.push(rawFileName);
       }
 
-      // ✅ STEP 6: Generate unique shuffles (40-45%)
+      //  STEP 6: Generate unique shuffles (40-45%)
       this.logProgress(jobId, `Creating ${targetCount} unique variations...`, 40);
 
       const uniqueOrders = this.videoUtilsHelper.generateUniqueShuffles(promptCount, targetCount);
       
       this.logProgress(jobId, `Generated ${uniqueOrders.length} unique orders`, 45);
 
-      // ✅ STEP 7: Stitch & Upload variations (45-100%)
+      // STEP 7: Stitch & Upload variations (45-100%)
       const resultUrls: string[] = [];
       const totalVariations = uniqueOrders.length;
 
@@ -202,27 +204,52 @@ export class GenerateAiService implements OnModuleInit {
         const finalVarPath = path.join(this.tempDir, `VAR_${jobId}_${i}.mp4`);
         cleanupFiles.push(finalVarPath);
 
-        // ✅ Progress: 70% -> 85% (merging phase)
+        // Progress: 70% -> 85% (merging phase)
         const mergeProgress = 70 + Math.floor((i / totalVariations) * 15);
         this.logProgress(jobId, `Merging audio for variation ${i + 1}/${totalVariations}...`, mergeProgress);
 
         await this.ffmpegMix.mergeAudioVisual(tempVisualPath, audioPath, finalVarPath);
 
         // Upload to S3
-        // ✅ Progress: 85% -> 100% (upload phase)
+        // Progress: 85% -> 100% (upload phase)
         const uploadProgress = 85 + Math.floor(((i + 1) / totalVariations) * 15);
         this.logProgress(jobId, `Uploading variation ${i + 1}/${totalVariations}...`, uploadProgress);
 
         const s3Url = await this.awsStorage.uploadFile(finalVarPath, finalFileName, 'video/mp4', `results/${jobId}`);
         resultUrls.push(s3Url);
       }
-
-      // ✅ STEP 8: Cleanup & Complete (100%)
-      this.logProgress(jobId, "Cleaning up temporary files...", 98);
-      this.cleanup(cleanupFiles);
       
-      this.logProgress(jobId, "Process Completed! All videos ready.", 100);
+      // SAVING RESULTS TO DB
+      try {
+        await this.galleryService.createJobWithVideos({
+        userId,
+        jobId,
+        productName: "Product Name", // Note: You might need to pass productName from DTO too if you want it accurate
+        script,
+        voiceGender,
+        promptCount: prompts.length,
+        targetCount,
+        prompts,
+        inputImages: images,
+        thumbnailUrl: images[0],
+        videos: resultUrls.map((url, idx) => ({
+          variationNumber: idx + 1,
+          videoUrl: url,
+          fileName: `VARIATION_${jobId}_${idx + 1}.mp4`
+        }))
+      });
+      this.logger.log(`[${jobId}] Saved to database successfully`);
+    } catch (dbError) {
+      this.logger.error(`[${jobId}] Failed to save to DB: ${dbError.message}`);
+      // Don't throw error here, because the video generation was actually successful
+    }
 
+    // STEP 8: Cleanup & Complete (100%)
+    this.logProgress(jobId, "Cleaning up temporary files...", 98);
+    this.cleanup(cleanupFiles);
+    
+    this.logProgress(jobId, "Process Completed! All videos ready.", 100);
+    
       return {
         jobId,
         totalVariations: resultUrls.length,

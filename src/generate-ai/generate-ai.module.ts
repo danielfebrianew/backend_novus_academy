@@ -9,9 +9,10 @@ import { WavespeedVideoService } from './services/wavespeed-video.service';
 import { GeminiTtsService } from './services/gemini-tts.service';
 import { FfmpegMixService } from './services/ffmpeg-mixer.service';
 import { HistoryModule } from 'src/history/history.module';
+import { GalleryModule } from 'src/gallery/gallery.module';
 
 @Module({
-  imports: [ConfigModule, HistoryModule],
+  imports: [ConfigModule, HistoryModule, GalleryModule],
   controllers: [GenerateAiController],
   providers: [
     GenerateAiService,     

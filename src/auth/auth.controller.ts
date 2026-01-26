@@ -5,7 +5,6 @@ import {
   Post,
   Req,
   Res,
-  UseGuards,
   UseInterceptors,
   InternalServerErrorException
 } from '@nestjs/common';
@@ -14,7 +13,6 @@ import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-import { AuthenticatedGuard } from './guards/authenticated.guard';
 import { ResponseInterceptor } from 'src/common/interceptors/response.interceptor';
 
 @Controller('auth')

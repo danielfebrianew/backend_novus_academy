@@ -15,6 +15,7 @@ import { SchedulerModule } from './scheduler/scheduler.module';
 import { AccountsModule } from './accounts/accounts.module';
 import { ReportsModule } from './reports/reports.module';
 import { UploadAwsModule } from './upload-aws/upload-aws.module';
+import { GalleryModule } from './gallery/gallery.module';
 
 @Module({
   imports: [
@@ -75,6 +76,7 @@ import { UploadAwsModule } from './upload-aws/upload-aws.module';
     AccountsModule,
     ReportsModule,
     UploadAwsModule,
+    GalleryModule,
   ],
   controllers: [],
   providers: [{

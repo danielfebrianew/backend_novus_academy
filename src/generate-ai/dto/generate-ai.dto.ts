@@ -21,6 +21,10 @@ export class GenerateVideoDto {
   @IsUrl({}, { each: true, message: "Setiap item dalam images harus berupa URL valid." })
   images: string[]; 
 
+  @IsString()
+  @IsNotEmpty()
+  productName: string;
+
   @IsArray()
   @IsString({ each: true })
   @IsNotEmpty()
