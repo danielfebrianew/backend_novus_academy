@@ -3,7 +3,7 @@ name: Deploy NestJS Backend
 on:
   push:
     branches:
-      - development
+      - production
 
 jobs:
   deploy:
@@ -30,7 +30,7 @@ jobs:
             export NVM_DIR=\$HOME/.nvm
             [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"
 
-            git pull origin development
+            git pull origin production
 
             npm ci
             npm run build
