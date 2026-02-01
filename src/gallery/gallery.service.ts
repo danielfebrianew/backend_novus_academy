@@ -71,7 +71,7 @@ export class GalleryService {
         thumbnailUrl: job.thumbnailUrl,
         videoCount: job.targetCount,
         voiceGender: job.voiceGender,
-        createdAt: job.createdAt,
+        createdAt: new Date(),
       })),
       meta: {
         total,

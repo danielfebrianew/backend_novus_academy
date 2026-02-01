@@ -224,7 +224,7 @@ export class GenerateAiService implements OnModuleInit {
         await this.galleryService.createJobWithVideos({
         userId,
         jobId,
-        productName: "Product Name", // Note: You might need to pass productName from DTO too if you want it accurate
+        productName, // Note: You might need to pass productName from DTO too if you want it accurate
         script,
         voiceGender,
         promptCount: prompts.length,
