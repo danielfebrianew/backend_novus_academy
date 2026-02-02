@@ -32,6 +32,7 @@ export class GalleryService {
         prompts: dto.prompts,
         inputImages: dto.inputImages,
         thumbnailUrl: dto.thumbnailUrl,
+        createdAt: new Date(),
       });
 
       const savedJob = await queryRunner.manager.save(videoJob);

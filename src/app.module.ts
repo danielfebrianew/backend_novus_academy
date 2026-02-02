@@ -60,6 +60,7 @@ import { GalleryModule } from './gallery/gallery.module';
           username: configService.get<string>('DB_USERNAME'),
           password: configService.get<string>('DB_PASSWORD'),
           database: configService.get<string>('DB_NAME'),
+          timezone: 'Z',
           autoLoadEntities: true,
           synchronize: !isProduction,
           logging: !isProduction,
