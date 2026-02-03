@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { GenerateAiModule } from './generate-ai/generate-ai.module';
+import { GenerateAiModule } from './generate-video/generate-video.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { UsersModule } from './users/users.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -16,6 +16,7 @@ import { AccountsModule } from './accounts/accounts.module';
 import { ReportsModule } from './reports/reports.module';
 import { UploadAwsModule } from './upload-aws/upload-aws.module';
 import { GalleryModule } from './gallery/gallery.module';
+import { GenerateImageModule } from './generate-image/generate-image.module';
 
 @Module({
   imports: [
@@ -69,6 +70,7 @@ import { GalleryModule } from './gallery/gallery.module';
     }),
     EventEmitterModule.forRoot(),
     GenerateAiModule,
+    GenerateImageModule,
     UsersModule,
     AuthModule,
     VideoMixerModule,

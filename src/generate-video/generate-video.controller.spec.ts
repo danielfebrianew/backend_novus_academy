@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { GenerateAiController } from './generate-ai.controller';
+import { GenerateAiController } from './generate-video.controller';
 
 describe('GenerateAiController', () => {
   let controller: GenerateAiController;

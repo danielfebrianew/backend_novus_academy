@@ -13,8 +13,8 @@ import {
   Req,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { GenerateAiService } from './generate-ai.service';
-import { GenerateTextDto, GenerateVideoDto } from './dto/generate-ai.dto';
+import { GenerateAiService } from './generate-video.service';
+import { GenerateTextDto, GenerateVideoDto } from './dto/generate-video.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Observable, fromEvent } from 'rxjs';
 import { map, filter } from 'rxjs/operators';

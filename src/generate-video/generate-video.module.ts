@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { GenerateAiController } from './generate-ai.controller';
-import { GenerateAiService } from './generate-ai.service';
+import { GenerateAiController } from './generate-video.controller';
+import { GenerateAiService } from './generate-video.service';
 import { VideoUtilsHelper } from './helpers/video-utils.helper';
 import { AwsStorageService } from './services/aws-storage.service';
 import { OpenAiScriptService } from './services/openai-script.service';
