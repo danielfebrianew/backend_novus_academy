@@ -1,4 +1,5 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsString, IsNotEmpty, IsOptional, IsEnum, Max, Min, IsInt } from 'class-validator';
 
 export enum ProductCategory {
   FASHION = 'fashion',             // nempel ke badan: kaos, sepatu, jam tangan, kacamata
@@ -21,6 +22,16 @@ export class GenerateImageRequestDto {
   @IsString()
   @IsOptional()
   background?: string;
+
+  @Transform(({ value }) => {
+    if (value === undefined || value === null || value === '') return undefined;
+    return parseInt(value, 10);
+  })
+  @IsInt()
+  @Min(1)
+  @Max(6)
+  @IsOptional()
+  variantCount?: number;
 
   @IsOptional() 
   modelImageUrl?: string; 

@@ -1,3 +1,5 @@
+//generate-image.service.ts
+
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI } from '@google/genai';
@@ -60,6 +62,7 @@ export class GenerateImageService {
       productName: dto.productName,
       productDescription: dto.productDescription,
       category: dto.category,
+      variantCount: dto.variantCount || 6,
       background,
       hasModelImage,
     });

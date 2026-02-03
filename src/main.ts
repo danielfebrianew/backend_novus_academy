@@ -12,8 +12,8 @@ async function bootstrap() {
 
   app.enableCors({
     origin: [
-      'http://localhost:3001', 
-      'http://localhost:3000', 
+      'http://localhost:3001',
+      'http://localhost:3000',
       'https://member.novusnextgen.com',
       'app://-',
       'app://.',
@@ -26,7 +26,7 @@ async function bootstrap() {
   app.enableShutdownHooks();
 
   app.use(helmet({
-    crossOriginResourcePolicy: false, 
+    crossOriginResourcePolicy: false,
   }));
 
   const redisClient = createClient({
@@ -62,7 +62,11 @@ async function bootstrap() {
   app.use(json({ limit: '10mb' }));
   app.use(urlencoded({ extended: true, limit: '10mb' }));
 
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    transform: true,
+    forbidNonWhitelisted: true,
+  }));
   app.setGlobalPrefix('api/v1');
 
   const server = app.getHttpServer();
