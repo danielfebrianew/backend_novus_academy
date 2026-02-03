@@ -1,71 +1,93 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { GoogleGenAI } from '@google/genai';
 import { GeminiImageGenService } from './services/gemini-image-gen.service';
 import { AwsStorageService } from './services/aws-storage.service';
+import { OpenAiPromptService } from './services/openai-prompt.service';
 import {
   GenerateImageRequestDto,
   GenerateImageResponse,
   ImageVariant,
 } from './dto/generate-image.dto';
-import { v4 as uuidv4 } from 'uuid'; // pastikan "uuid" ada di package.json
 import { generateJobId } from './helpers/generate-job-id.helper';
+import { BACKGROUND_FALLBACKS, BackgroundKey } from './helpers/prompt-template.helper';
 
 @Injectable()
 export class GenerateImageService {
   private readonly logger = new Logger(GenerateImageService.name);
-
-  // 6 pose → akan generate 6 variant per request
-  private readonly poseVariations = [
-    'front facing with confident smile',
-    'slight side angle showing product details',
-    'three-quarter view with natural expression',
-    'standing pose holding the product',
-    'casual pose showcasing the product',
-    'dynamic pose demonstrating product use',
-  ];
+  private readonly ai: GoogleGenAI;
 
   constructor(
+    private readonly configService: ConfigService,
     private readonly geminiImageGenService: GeminiImageGenService,
     private readonly awsStorageService: AwsStorageService,
-  ) {}
+    private readonly openAiPromptService: OpenAiPromptService,
+  ) {
+    const apiKey = this.configService.get<string>('GEMINI_API_KEY') || '';
+    this.ai = new GoogleGenAI({ apiKey });
+  }
 
-  /**
-   * Entry point dari controller.
-   * Signature cocok dengan cara controller memanggil:
-   *   generateImage(body, { modelImage, productImage }, userId)
-   */
+  // ─── Entry point ──────────────────────────────────────────────────────────
+
   async generateImage(
     dto: GenerateImageRequestDto,
-    files: { modelImage: Express.Multer.File; productImage: Express.Multer.File },
+    files: { modelImage: Express.Multer.File | null; productImage: Express.Multer.File },
     userId: string,
   ): Promise<GenerateImageResponse> {
     const startTime = Date.now();
     const jobId = generateJobId();
+    this.logger.log(`[${jobId}] Starting — category: ${dto.category}`);
 
-    // Konversi file upload → base64 string (Gemini butuh ini)
-    const modelBase64 = files.modelImage.buffer.toString('base64');
+    // ─── Prep base64 ────────────────────────────────────────────────
     const productBase64 = files.productImage.buffer.toString('base64');
+    const modelBase64 = files.modelImage ? files.modelImage.buffer.toString('base64') : null;
+    const hasModelImage = modelBase64 !== null;
 
-    // Generate semua variant secara parallel
-    const variantPromises = this.poseVariations.map((pose, index) =>
+    // ─── Step 1: Resolve background ─────────────────────────────────
+    // User isi atmosphere → pakai langsung.
+    // Kosong → analisis warna produk via Gemini, auto-pick dari 3 fallback.
+    const background = dto.background
+      ? dto.background
+      : await this.resolveBackgroundFromProduct(productBase64);
+
+    this.logger.log(`[${jobId}] Background resolved: "${background}"`);
+
+    // ─── Step 2: Generate 6 prompts via OpenAI ─────────────────────
+    // GPT-4o lihat foto produk (+ model), bikin 6 prompt yang disesuaikan.
+    const photoPrompts = await this.openAiPromptService.generatePhotoPrompts({
+      productBase64,
+      modelBase64,
+      productName: dto.productName,
+      productDescription: dto.productDescription,
+      category: dto.category,
+      background,
+      hasModelImage,
+    });
+
+    this.logger.log(`[${jobId}] Got ${photoPrompts.length} prompts from OpenAI`);
+
+    // ─── Step 3: Generate images in parallel ────────────────────────
+    // Masing-masing prompt dari OpenAI → 1 variant image via Gemini → upload S3
+    const variantPromises = photoPrompts.map((item, index) =>
       this.generateSingleVariant({
         jobId,
-        productName: dto.productName,
-        additionalPrompt: dto.additionalPrompt,
-        pose,
+        prompt: item.prompt,
+        title: item.title,
         variantNumber: index + 1,
         modelBase64,
         productBase64,
-        userId,
       }),
     );
 
     const variants: ImageVariant[] = await Promise.all(variantPromises);
-
-    // Hitung statistik
     const successfulVariants = variants.filter((v) => v.imageUrl !== null).length;
 
     return {
-      jobId: jobId,
+      jobId,
+      productName: dto.productName,
+      productDescription: dto.productDescription,
+      category: dto.category,
+      background,
       totalVariants: variants.length,
       successfulVariants,
       failedVariants: variants.length - successfulVariants,
@@ -74,42 +96,29 @@ export class GenerateImageService {
     };
   }
 
-  // ─── Helpers ────────────────────────────────────────────────────────────────
+  // ─── Single variant ───────────────────────────────────────────────────────
 
-  /**
-   * Generate + upload 1 variant. Dikall per-pose.
-   * Catch error per-variant agar satu yang gagal tidak nge-block yang lain.
-   */
   private async generateSingleVariant(params: {
     jobId: string;
-    productName: string;
-    additionalPrompt?: string;
-    pose: string;
+    prompt: string;        // prompt dari OpenAI — siap pakai langsung
+    title: string;         // scene title dari OpenAI — untuk logging
     variantNumber: number;
-    modelBase64: string;
+    modelBase64: string | null;
     productBase64: string;
-    userId: string;
   }): Promise<ImageVariant> {
     try {
-      this.logger.log(`Generating variant ${params.variantNumber}: "${params.pose}"`);
+      this.logger.log(`[${params.jobId}] Variant ${params.variantNumber}: "${params.title}"`);
 
-      // 1. Bangun prompt
-      const prompt = this.buildPrompt(
-        params.productName,
-        params.pose,
-        params.additionalPrompt,
-      );
-
-      // 2. Kirim ke Gemini → dapat Buffer gambar
+      // Kirim ke Gemini — prompt sudah lengkap dari OpenAI
       const imageBuffer = await this.geminiImageGenService.generateImage({
-        prompt,
+        prompt: params.prompt,
         modelBase64: params.modelBase64,
         productBase64: params.productBase64,
       });
 
-      // 3. Upload ke S3
-      const fileName = `${uuidv4()}.png`;
-      const folder = `generated-images/${params.userId}`;
+      // Upload ke S3
+      const fileName = `variant_${params.variantNumber}.png`;
+      const folder = `generated-images/${params.jobId}`;
 
       const imageUrl = await this.awsStorageService.uploadFile(
         imageBuffer,
@@ -118,21 +127,23 @@ export class GenerateImageService {
         folder,
       );
 
-      this.logger.log(`Variant ${params.variantNumber} berhasil → ${imageUrl}`);
+      this.logger.log(`[${params.jobId}] Variant ${params.variantNumber} ✓ → ${imageUrl}`);
 
       return {
         variantNumber: params.variantNumber,
+        title: params.title,
+        prompt: params.prompt,
         imageUrl,
         error: null,
         createdAt: new Date(),
       };
     } catch (error) {
-      this.logger.error(
-        `Variant ${params.variantNumber} gagal: ${error.message}`,
-      );
+      this.logger.error(`[${params.jobId}] Variant ${params.variantNumber} ✗ — ${error.message}`);
 
       return {
         variantNumber: params.variantNumber,
+        title: params.title,
+        prompt: params.prompt,
         imageUrl: null,
         error: error.message,
         createdAt: new Date(),
@@ -140,30 +151,50 @@ export class GenerateImageService {
     }
   }
 
-  /**
-   * Bangun prompt lengkap untuk Gemini.
-   */
-  private buildPrompt(
-    productName: string,
-    pose: string,
-    additionalPrompt?: string,
-  ): string {
-    const basePrompt = `Professional studio photography of a model wearing/using ${productName}.
+  // ─── Background resolution ────────────────────────────────────────────────
 
-CRITICAL REQUIREMENTS:
-- Model MUST have the EXACT same face as reference image (facial features, skin tone, expression)
-- Product MUST match the reference product exactly (design, colors, details)
-- Pose: ${pose}
-- Background: Complementary solid color or subtle gradient that harmonizes with model's skin tone
-- Professional studio lighting with soft shadows
-- High-end commercial product photography style
-- Sharp focus on both model and product
-- Clean, minimal aesthetic suitable for e-commerce/affiliate marketing
-- Photorealistic quality, 4K resolution
+  private async resolveBackgroundFromProduct(productBase64: string): Promise<string> {
+    try {
+      this.logger.log('Resolving background color from product image...');
 
-Style: Professional, polished, editorial quality similar to high-end brand campaigns.
-${additionalPrompt ? `Additional instructions: ${additionalPrompt}` : ''}`;
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: {
+          parts: [
+            {
+              inlineData: {
+                data: productBase64,
+                mimeType: 'image/png',
+              },
+            },
+            {
+              text: `Look at this product image. Based on its dominant colors and visual tone,
+pick exactly ONE background that would create the best contrast and visual harmony for an e-commerce product photo.
 
-    return basePrompt.trim();
+Options:
+- plain_white
+- wine_red
+- light_blue
+
+Reply with ONLY the option key. No explanation.`,
+            },
+          ],
+        },
+      });
+
+      const pick = (response.text || '').trim().toLowerCase() as BackgroundKey;
+
+      if (pick in BACKGROUND_FALLBACKS) {
+        this.logger.log(`Background resolved: ${pick}`);
+        return BACKGROUND_FALLBACKS[pick];
+      }
+
+      this.logger.warn(`Unexpected background key: "${pick}", falling back to plain_white`);
+      return BACKGROUND_FALLBACKS.plain_white;
+
+    } catch (error) {
+      this.logger.warn(`Background resolution failed: ${error.message}. Defaulting to plain_white.`);
+      return BACKGROUND_FALLBACKS.plain_white;
+    }
   }
 }
