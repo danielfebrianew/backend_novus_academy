@@ -1,3 +1,4 @@
+// src/users/entities/user.entity.ts
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { History } from '../../history/entities/history.entity';
@@ -34,6 +35,11 @@ export class User {
     default: UserRole.USER,
   })
   role: UserRole;
+
+  // Field untuk menyimpan hashed refresh token (JWT)
+  @Exclude()
+  @Column({ nullable: true, type: 'text' })
+  refreshToken?: string;
 
   @CreateDateColumn()
   createdAt: Date;
