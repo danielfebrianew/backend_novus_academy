@@ -10,6 +10,14 @@ import helmet from 'helmet';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+    // Helmet DULU (sebelum CORS)
+  app.use(helmet({
+    crossOriginResourcePolicy: false,
+    crossOriginOpenerPolicy: false,  // tambah ini
+    crossOriginEmbedderPolicy: false, // tambah ini
+  }));
+
+  // Baru CORS
   app.enableCors({
     origin: [
       'http://localhost:3001',
@@ -20,14 +28,10 @@ async function bootstrap() {
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
-    allowedHeaders: 'Content-Type, Accept, Authorization',
+    allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
   });
 
   app.enableShutdownHooks();
-
-  app.use(helmet({
-    crossOriginResourcePolicy: false,
-  }));
 
   const redisClient = createClient({
     password: process.env.REDIS_PASSWORD,
