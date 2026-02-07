@@ -20,19 +20,16 @@ import { Observable, fromEvent } from 'rxjs';
 import { map, filter } from 'rxjs/operators';
 import { ResponseInterceptor } from 'src/common/interceptors/response.interceptor';
 import { ResponseMessage } from 'src/common/decorators/response-message.decorator';
-import { AuthenticatedGuard } from 'src/auth/guards/authenticated.guard';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
-import { HistoryService } from 'src/history/history.service';
-import { ActionType } from 'src/history/entities/history.entity';
 
 
 @Controller('generate')
 @UseInterceptors(ResponseInterceptor)
-@UseGuards(AuthenticatedGuard)
+@UseGuards(JwtAuthGuard)
 export class GenerateAiController {
   constructor(
     private readonly generateAiService: GenerateAiService,
-    private readonly historyService: HistoryService,
     private eventEmitter: EventEmitter2
   ) { }
 
@@ -56,13 +53,7 @@ export class GenerateAiController {
   @Post('text')
   @ResponseMessage('Generate Text Berhasil')
   async generateText(@Body() dto: GenerateTextDto, @Req() req: any) {
-    const result = await this.generateAiService.generateText(dto.imageUrl, dto.promptCount, dto.productName); const userId = req.session.user.id;
-    await this.historyService.logActivity(
-      userId,
-      ActionType.GEN_TEXT,
-      dto,    // Input (Prompt, ProductName)
-      result  // Output (Voiceover, Caption, dll)
-    );
+    const result = await this.generateAiService.generateText(dto.imageUrl, dto.promptCount, dto.productName);
     return result;
   }
 
@@ -71,10 +62,14 @@ export class GenerateAiController {
   @ResponseMessage('Video sedang diproses')
   async generateVideo(@Body() dto: GenerateVideoDto, @Req() req: any) {
     const count = dto.prompts.length;
-    const userId = req.session.user.id;
+    const userId = req.user.id;
 
-    if (![4, 5, 6].includes(count)) {
-      throw new BadRequestException(`Jumlah prompt harus 4, 5, atau 6. Kamu kirim ${count}.`);
+    if (count < 4 || count > 6) {
+      throw new BadRequestException(`Jumlah prompt harus antara 4-6. Kamu kirim ${count}.`);
+    }
+
+    if (dto.targetCount < 1 || dto.targetCount > 100) {
+      throw new BadRequestException(`Jumlah variasi video harus antara 1-100. Kamu minta: ${dto.targetCount}`);
     }
 
     const result = await this.generateAiService.processVideoVariations(
@@ -85,24 +80,8 @@ export class GenerateAiController {
       dto.jobId,
       dto.targetCount,
       dto.voiceGender || 'female',
-      userId  
+      userId
     );
-
-    const inputSummary = {
-      jobId: dto.jobId,
-      voiceGender: dto.voiceGender,
-      targetCount: dto.targetCount,
-      imageCount: dto.images.length,
-      promptCount: dto.prompts.length,
-      script: dto.script 
-    };
-
-    await this.historyService.logActivity(
-        userId,
-        ActionType.GEN_VIDEO,
-        inputSummary,
-        result 
-      );
 
     return result;
   }
@@ -122,20 +101,6 @@ export class GenerateAiController {
 
     try {
       const result = await this.generateAiService.uploadImages(files);
-
-      const userId = req.session.user.id;
-      const inputSummary = {
-        fileCount: files.length,
-        fileNames: files.map(f => f.originalname)
-      };
-
-      await this.historyService.logActivity(
-        userId,
-        ActionType.UPLOAD,
-        inputSummary,
-        result // Isinya array S3 URLs
-      );
-
       return result;
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Upload Failed';

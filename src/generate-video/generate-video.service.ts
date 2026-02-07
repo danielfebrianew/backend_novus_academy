@@ -93,27 +93,12 @@ export class GenerateAiService implements OnModuleInit {
     this.logger.log(`Job ${jobId}: Gender '${voiceGender}' -> Selected Voice: '${voiceName}'`);
 
     // Validation
-    switch (promptCount) {
-      case 4:
-        if (targetCount < 4 || targetCount > 20) {
-          throw new BadRequestException(`Untuk 4 prompt, variasi video harus antara 4 sampai 20. Kamu minta: ${targetCount}`);
-        }
-        break;
+    if (promptCount < 4 || promptCount > 6) {
+      throw new BadRequestException(`Jumlah prompt harus antara 4-6. Kamu kirim ${promptCount}.`);
+    }
 
-      case 5:
-        if (targetCount < 5 || targetCount > 50) {
-          throw new BadRequestException(`Untuk 5 prompt, variasi video harus antara 5 sampai 50. Kamu minta: ${targetCount}`);
-        }
-        break;
-
-      case 6:
-        if (targetCount < 6 || targetCount > 100) {
-          throw new BadRequestException(`Untuk 6 prompt, variasi video harus antara 6 sampai 100. Kamu minta: ${targetCount}`);
-        }
-        break;
-
-      default:
-        throw new BadRequestException(`Jumlah prompt harus 4, 5, atau 6. Kamu kirim ${promptCount}.`);
+    if (targetCount < 1 || targetCount > 100) {
+      throw new BadRequestException(`Jumlah variasi video harus antara 1-100. Kamu minta: ${targetCount}`);
     }
 
     try {
@@ -220,29 +205,36 @@ export class GenerateAiService implements OnModuleInit {
       }
       
       // SAVING RESULTS TO DB
+      this.logProgress(jobId, "Saving to gallery...", 99);
+
       try {
         await this.galleryService.createJobWithVideos({
-        userId,
-        jobId,
-        productName, // Note: You might need to pass productName from DTO too if you want it accurate
-        script,
-        voiceGender,
-        promptCount: prompts.length,
-        targetCount,
-        prompts,
-        inputImages: images,
-        thumbnailUrl: images[0],
-        videos: resultUrls.map((url, idx) => ({
-          variationNumber: idx + 1,
-          videoUrl: url,
-          fileName: `VARIATION_${jobId}_${idx + 1}.mp4`
-        }))
-      });
-      this.logger.log(`[${jobId}] Saved to database successfully`);
-    } catch (dbError) {
-      this.logger.error(`[${jobId}] Failed to save to DB: ${dbError.message}`);
-      // Don't throw error here, because the video generation was actually successful
-    }
+          userId,
+          jobId,
+          productName,
+          script,
+          voiceGender,
+          promptCount: prompts.length,
+          targetCount,
+          prompts,
+          inputImages: images,
+          thumbnailUrl: images[0],
+          videos: resultUrls.map((url, idx) => ({
+            variationNumber: idx + 1,
+            videoUrl: url,
+            fileName: `VARIATION_${jobId}_${idx + 1}.mp4`
+          }))
+        });
+
+        this.logger.log(`[${jobId}] ✅ Successfully saved ${resultUrls.length} videos to gallery`);
+      } catch (dbError) {
+        this.logger.error(`[${jobId}] ❌ FAILED to save to gallery:`, dbError);
+
+        // Throw error agar user tahu ada masalah!
+        throw new InternalServerErrorException(
+          `Video generation succeeded but failed to save to gallery: ${dbError.message || 'Unknown error'}`
+        );
+      }
 
     // STEP 8: Cleanup & Complete (100%)
     this.logProgress(jobId, "Cleaning up temporary files...", 98);

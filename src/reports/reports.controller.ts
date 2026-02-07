@@ -1,11 +1,11 @@
 import { Controller, Get, Query, UseGuards, UseInterceptors, BadRequestException } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { ResponseInterceptor } from 'src/common/interceptors/response.interceptor';
-import { AuthenticatedGuard } from 'src/auth/guards/authenticated.guard';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 
 @Controller('reports')
 @UseInterceptors(ResponseInterceptor)
-@UseGuards(AuthenticatedGuard)
+@UseGuards(JwtAuthGuard)
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 

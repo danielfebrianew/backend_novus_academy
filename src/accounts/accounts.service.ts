@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Account } from './entities/account.entity';
@@ -26,31 +26,37 @@ export class AccountsService {
     return await this.repo.save(account);
   }
 
-  // Get All Accounts (Dropdown List)
-  async findAll() {
-    // Karena di entity password & cookie select: false, aman langsung return
+  // Get All Accounts (Dropdown List) - HANYA MILIK USER SENDIRI
+  async findAll(userId: number) {
     return await this.repo.find({
+      where: { userId },
       order: { username: 'ASC' }
     });
   }
 
-  // Get One
-  async findOne(id: number) {
+  // Get One - DENGAN VALIDASI OWNERSHIP
+  async findOne(id: number, userId: number) {
     const account = await this.repo.findOne({ where: { id } });
     if (!account) throw new NotFoundException('Akun tidak ditemukan');
+
+    // Validasi ownership
+    if (account.userId !== userId) {
+      throw new ForbiddenException('Anda tidak memiliki akses ke akun ini');
+    }
+
     return account;
   }
 
-  // Update (Misal update cookie baru)
-  async update(id: number, attrs: Partial<Account>) {
-    const account = await this.findOne(id);
+  // Update (Misal update cookie baru) - DENGAN VALIDASI OWNERSHIP
+  async update(id: number, attrs: Partial<Account>, userId: number) {
+    const account = await this.findOne(id, userId);
     Object.assign(account, attrs);
     return await this.repo.save(account);
   }
 
-  // Delete
-  async remove(id: number) {
-    const account = await this.findOne(id);
+  // Delete - DENGAN VALIDASI OWNERSHIP
+  async remove(id: number, userId: number) {
+    const account = await this.findOne(id, userId);
     return await this.repo.remove(account);
   }
 }

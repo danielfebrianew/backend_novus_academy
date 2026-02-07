@@ -3,11 +3,9 @@ import { SchedulerService } from './scheduler.service';
 import { PostStatus } from './entities/scheduler.entity';
 import { ResponseInterceptor } from 'src/common/interceptors/response.interceptor';
 import { ResponseMessage } from 'src/common/decorators/response-message.decorator';
-import { AuthenticatedGuard } from '../auth/guards/authenticated.guard';
 
 @Controller('scheduler')
 @UseInterceptors(ResponseInterceptor)
-// @UseGuards(AuthenticatedGuard) // Hanya user login
 export class SchedulerController {
   constructor(private readonly schedulerService: SchedulerService) {}
 

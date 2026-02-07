@@ -1,3 +1,5 @@
+// src/gallery/gallery.service.ts
+
 import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -72,7 +74,7 @@ export class GalleryService {
         thumbnailUrl: job.thumbnailUrl,
         videoCount: job.targetCount,
         voiceGender: job.voiceGender,
-        createdAt: new Date(),
+        createdAt: job.createdAt,
       })),
       meta: {
         total,
