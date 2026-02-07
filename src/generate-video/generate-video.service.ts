@@ -101,8 +101,27 @@ export class GenerateAiService implements OnModuleInit {
       throw new BadRequestException(`Jumlah variasi video harus antara 1-100. Kamu minta: ${targetCount}`);
     }
 
+    // Save job metadata to DB first to prevent connection timeout
     try {
-      // ✅ STEP 1: Start (0%)
+      await this.galleryService.createJobMetadata(
+        userId,
+        jobId,
+        productName,
+        script,
+        voiceGender,
+        prompts.length,
+        targetCount,
+        prompts,
+        images,
+        images[0],
+      );
+      this.logger.log(`[${jobId}] Job metadata saved to database`);
+    } catch (dbError) {
+      this.logger.error(`[${jobId}] Failed to save job metadata:`, dbError);
+      throw new InternalServerErrorException('Failed to save job metadata to database');
+    }
+
+    try {
       this.logProgress(jobId, "=== STARTING AI ENGINE ===", 0);
 
       // ✅ STEP 2: Generate video clips (0-25%)
@@ -204,35 +223,26 @@ export class GenerateAiService implements OnModuleInit {
         resultUrls.push(s3Url);
       }
       
-      // SAVING RESULTS TO DB
-      this.logProgress(jobId, "Saving to gallery...", 99);
+      // Add videos to existing job
+      this.logProgress(jobId, "Saving videos to gallery...", 99);
 
       try {
-        await this.galleryService.createJobWithVideos({
-          userId,
+        await this.galleryService.addVideosToJob(
           jobId,
-          productName,
-          script,
-          voiceGender,
-          promptCount: prompts.length,
-          targetCount,
-          prompts,
-          inputImages: images,
-          thumbnailUrl: images[0],
-          videos: resultUrls.map((url, idx) => ({
+          images[0],
+          resultUrls.map((url, idx) => ({
             variationNumber: idx + 1,
             videoUrl: url,
             fileName: `VARIATION_${jobId}_${idx + 1}.mp4`
           }))
-        });
+        );
 
-        this.logger.log(`[${jobId}] ✅ Successfully saved ${resultUrls.length} videos to gallery`);
+        this.logger.log(`[${jobId}] Successfully saved ${resultUrls.length} videos to gallery`);
       } catch (dbError) {
-        this.logger.error(`[${jobId}] ❌ FAILED to save to gallery:`, dbError);
+        this.logger.error(`[${jobId}] FAILED to save videos to gallery:`, dbError);
 
-        // Throw error agar user tahu ada masalah!
         throw new InternalServerErrorException(
-          `Video generation succeeded but failed to save to gallery: ${dbError.message || 'Unknown error'}`
+          `Video generation succeeded but failed to save videos to gallery: ${dbError.message || 'Unknown error'}`
         );
       }
 

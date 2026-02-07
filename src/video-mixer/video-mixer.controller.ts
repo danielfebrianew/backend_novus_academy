@@ -1,30 +1,38 @@
-import { 
-  Controller, 
-  Post, 
-  UseInterceptors, 
-  UploadedFiles, 
+import {
+  Controller,
+  Post,
+  UseInterceptors,
+  UploadedFiles,
   Body,
-  BadRequestException 
+  BadRequestException,
+  UseGuards,
+  Req
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { VideoMixerService } from './video-mixer.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ResponseInterceptor } from '../common/interceptors/response.interceptor';
+import { ResponseMessage } from '../common/decorators/response-message.decorator';
 
 @Controller('')
+@UseGuards(JwtAuthGuard)
+@UseInterceptors(ResponseInterceptor)
 export class VideoMixerController {
   constructor(private readonly videoService: VideoMixerService) {}
 
   @Post('video-mixer')
+  @ResponseMessage('Video sedang diproses')
   @UseInterceptors(
     FileFieldsInterceptor(
       [
-        { name: 'clips', maxCount: 6 }, 
-        { name: 'audio', maxCount: 1 }, 
+        { name: 'clips', maxCount: 6 },
+        { name: 'audio', maxCount: 1 },
       ],
       {
         storage: diskStorage({
-          destination: './uploads', // Upload mentah tetap di folder temporary project
+          destination: './uploads',
           filename: (req, file, cb) => {
             const randomName = Array(32).fill(null).map(() => (Math.round(Math.random() * 16)).toString(16)).join('');
             cb(null, `${randomName}${extname(file.originalname)}`);
@@ -36,7 +44,11 @@ export class VideoMixerController {
   async stitchVideo(
     @UploadedFiles() files: { clips?: Express.Multer.File[], audio?: Express.Multer.File[] },
     @Body('variations') variations: string,
-    @Body('outputDir') outputDir: string // <--- 1. Tangkap outputDir dari Frontend
+    @Body('jobId') jobId: string,
+    @Body('productName') productName: string,
+    @Body('script') script: string,
+    @Body('voiceGender') voiceGender: string,
+    @Req() req: any
   ) {
     if (!files.clips || files.clips.length < 2) {
       throw new BadRequestException('Minimal upload 2 video klip.');
@@ -44,21 +56,24 @@ export class VideoMixerController {
     if (!files.audio || files.audio.length === 0) {
       throw new BadRequestException('File audio diperlukan.');
     }
+    if (!jobId) {
+      throw new BadRequestException('jobId diperlukan');
+    }
 
-    // Ambil path absolut dari file yang diupload
     const clipPaths = files.clips.map(file => file.path);
     const audioPath = files.audio[0].path;
     const targetVar = parseInt(variations) || 1;
-    
-    // Fallback: Jika user tidak isi (harusya divalidasi frontend), pakai folder default
-    const targetOutputDir = outputDir || './output'; 
+    const userId = req.user.userId;
 
-    // Panggil Service dengan targetOutputDir
     const result = await this.videoService.generateStitchedVideos(
       clipPaths,
       audioPath,
       targetVar,
-      targetOutputDir // <--- 2. Kirim ke service
+      userId,
+      jobId,
+      productName || 'Mixed Video',
+      script || '',
+      voiceGender || 'female'
     );
 
     return result;

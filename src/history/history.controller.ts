@@ -13,7 +13,7 @@ export class HistoryController {
   @Get()
   @ResponseMessage('Berhasil mengambil data riwayat')
   async getMyHistory(@Req() req: any) {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     return this.historyService.getUserHistory(userId);
   }
 }

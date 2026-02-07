@@ -62,7 +62,7 @@ export class GenerateAiController {
   @ResponseMessage('Video sedang diproses')
   async generateVideo(@Body() dto: GenerateVideoDto, @Req() req: any) {
     const count = dto.prompts.length;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     if (count < 4 || count > 6) {
       throw new BadRequestException(`Jumlah prompt harus antara 4-6. Kamu kirim ${count}.`);

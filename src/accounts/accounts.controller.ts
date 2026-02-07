@@ -9,26 +9,26 @@ export class AccountsController {
 
   @Post()
   create(@Body() body: any, @Req() req: any) {
-    return this.accountsService.create(body, req.user.id);
+    return this.accountsService.create(body, req.user.userId);
   }
 
   @Get()
   findAll(@Req() req: any) {
-    return this.accountsService.findAll(req.user.id);
+    return this.accountsService.findAll(req.user.userId);
   }
 
   @Get(':id')
   findOne(@Param('id') id: string, @Req() req: any) {
-    return this.accountsService.findOne(+id, req.user.id);
+    return this.accountsService.findOne(+id, req.user.userId);
   }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() body: any, @Req() req: any) {
-    return this.accountsService.update(+id, body, req.user.id);
+    return this.accountsService.update(+id, body, req.user.userId);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string, @Req() req: any) {
-    return this.accountsService.remove(+id, req.user.id);
+    return this.accountsService.remove(+id, req.user.userId);
   }
 }

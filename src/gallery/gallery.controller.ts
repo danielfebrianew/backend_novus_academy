@@ -19,7 +19,7 @@ export class GalleryController {
         @Req() req: any
     ) {
         return this.galleryService.findAllJobs(
-            req.user.id,
+            req.user.userId,
             Number(page) || 1,
             Number(limit) || 30,
         );
@@ -27,13 +27,13 @@ export class GalleryController {
 
     @Get('jobs/:jobId')
     async getJobDetail(@Param('jobId') jobId: string, @Req() req: any) {
-        return this.galleryService.findJobDetail(jobId, req.user.id);
+        return this.galleryService.findJobDetail(jobId, req.user.userId);
     }
 
     @Delete('jobs/:jobId')
     @ResponseMessage('Job and all videos deleted')
     async deleteJob(@Param('jobId') jobId: string, @Req() req: any) {
-        return this.galleryService.deleteJob(jobId, req.user.id);
+        return this.galleryService.deleteJob(jobId, req.user.userId);
     }
 
     @Delete('videos/:videoId')

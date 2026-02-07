@@ -1,5 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, OneToMany, Index } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany, Index } from 'typeorm';
 import { VideoResult } from './video-result.entity';
 
 @Entity('video_jobs')
@@ -10,9 +9,6 @@ export class VideoJob {
   @Index()
   @Column({ name: 'user_id' })
   userId: number;
-
-  @ManyToOne(() => User)
-  user: User;
 
   @Index({ unique: true })
   @Column({ name: 'job_id', length: 50 })

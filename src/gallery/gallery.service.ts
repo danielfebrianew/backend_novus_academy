@@ -17,6 +17,85 @@ export class GalleryService {
     private dataSource: DataSource,
   ) {}
 
+  async createJobMetadata(
+    userId: number,
+    jobId: string,
+    productName: string,
+    script: string,
+    voiceGender: string,
+    promptCount: number,
+    targetCount: number,
+    prompts: string[],
+    inputImages: string[],
+    thumbnailUrl?: string,
+  ): Promise<VideoJob> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const videoJob = queryRunner.manager.create(VideoJob, {
+        userId,
+        jobId,
+        productName,
+        script,
+        voiceGender,
+        promptCount,
+        targetCount,
+        prompts,
+        inputImages,
+        thumbnailUrl: thumbnailUrl || 'https://via.placeholder.com/640x360.png?text=Processing',
+        createdAt: new Date(),
+      });
+
+      const savedJob = await queryRunner.manager.save(videoJob);
+      await queryRunner.commitTransaction();
+
+      return savedJob;
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      console.error('createJobMetadata error:', err);
+      throw new InternalServerErrorException(`Failed to create job metadata: ${err.message}`);
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async addVideosToJob(
+    jobId: string,
+    thumbnailUrl: string,
+    videos: Array<{ variationNumber: number; videoUrl: string; fileName: string }>,
+  ): Promise<void> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const job = await queryRunner.manager.findOne(VideoJob, { where: { jobId } });
+      if (!job) {
+        throw new NotFoundException('Job not found');
+      }
+
+      job.thumbnailUrl = thumbnailUrl;
+      await queryRunner.manager.save(job);
+
+      const videoResults = videos.map((v) =>
+        queryRunner.manager.create(VideoResult, {
+          ...v,
+          videoJobId: job.id,
+        }),
+      );
+
+      await queryRunner.manager.save(videoResults);
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw new InternalServerErrorException('Failed to add videos to job');
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
   async createJobWithVideos(dto: CreateVideoJobDto): Promise<VideoJob> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -48,7 +127,7 @@ export class GalleryService {
 
       await queryRunner.manager.save(videoResults);
       await queryRunner.commitTransaction();
-      
+
       return savedJob;
     } catch (err) {
       await queryRunner.rollbackTransaction();
