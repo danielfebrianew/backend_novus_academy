@@ -7,7 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { VideoMixerModule } from './video-mixer/video-mixer.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import Redis from 'ioredis';
 import { HistoryModule } from './history/history.module';
@@ -17,12 +17,15 @@ import { ReportsModule } from './reports/reports.module';
 import { UploadAwsModule } from './upload-aws/upload-aws.module';
 import { GalleryModule } from './gallery/gallery.module';
 import { GenerateImageModule } from './generate-image/generate-image.module';
+import { LoggerModule } from './logger/logger.module';
+import { LoggingInterceptor } from './logger/interceptors/logging.interceptor';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    LoggerModule,
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -82,9 +85,15 @@ import { GenerateImageModule } from './generate-image/generate-image.module';
     GalleryModule,
   ],
   controllers: [],
-  providers: [{
-    provide: APP_GUARD,
-    useClass: ThrottlerGuard,
-  }],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LoggingInterceptor,
+    },
+  ],
 })
 export class AppModule { }

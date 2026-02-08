@@ -6,9 +6,16 @@ import { createClient } from 'redis';
 import { RedisStore } from 'connect-redis';
 import session from 'express-session';
 import helmet from 'helmet';
+import { AppLogger } from './logger/logger.service';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+  });
+
+  // Replace NestJS default logger with Winston
+  const logger = app.get(AppLogger);
+  app.useLogger(logger);
 
     // Helmet DULU (sebelum CORS)
   app.use(helmet({
@@ -80,6 +87,6 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT ?? 3000);
 
-  console.log(`Application is running on: ${await app.getUrl()}`);
+  logger.log(`Application is running on: ${await app.getUrl()}`, 'Bootstrap');
 }
 bootstrap();
