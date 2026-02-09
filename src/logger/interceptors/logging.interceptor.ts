@@ -24,7 +24,9 @@ export class LoggingInterceptor implements NestInterceptor {
     const startTime = Date.now();
 
     // Attach request ID to response header for tracing
-    response.setHeader('x-request-id', requestId);
+    if (!response.headersSent) {
+      response.setHeader('x-request-id', requestId);
+    }
 
     const { method, originalUrl, ip } = request;
     const userAgent = request.get('user-agent') || '';
