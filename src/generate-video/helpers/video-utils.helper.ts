@@ -1,27 +1,24 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
-import * as path from 'path'; 
-import ffmpeg from 'fluent-ffmpeg';
+import * as path from 'path';
 import axios from 'axios';
 
 @Injectable()
 export class VideoUtilsHelper {
   private readonly logger = new Logger(VideoUtilsHelper.name);
-  private tempDir = './temp'; 
+  private tempDir = './temp';
 
-  // 1. Shuffle Logic
   generateUniqueShuffles(length: number, limit: number): number[][] {
     const results = new Set<string>();
     const output: number[][] = [];
     const baseIndices = Array.from({ length }, (_, i) => i);
     let attempts = 0;
 
-    // Safety break limit
     while (output.length < limit && attempts < limit * 50) {
       attempts++;
       const shuffled = [...baseIndices].sort(() => Math.random() - 0.5);
       const key = shuffled.join(',');
-      
+
       if (!results.has(key)) {
         results.add(key);
         output.push(shuffled);
@@ -34,18 +31,15 @@ export class VideoUtilsHelper {
     return output;
   }
 
-  // 2. Download File (Stream to File)
   async downloadFile(url: string, outputPath: string): Promise<void> {
     try {
       const response = await axios({
         url,
         method: 'GET',
-        responseType: 'stream' // Important for piping
+        responseType: 'stream',
       });
 
       const writer = fs.createWriteStream(outputPath);
-      
-      // Axios response.data IS the stream
       response.data.pipe(writer);
 
       return new Promise((resolve, reject) => {
@@ -58,43 +52,7 @@ export class VideoUtilsHelper {
     }
   }
 
-  // 3. Trim Video (Memotong durasi)
-  trimVideo(inputPath: string, outputPath: string, duration: number): Promise<void> {
-    return new Promise((resolve, reject) => {
-      ffmpeg(inputPath)
-        .setStartTime(0)
-        .setDuration(duration)
-        .output(outputPath)
-        .on('end', () => resolve())
-        .on('error', (err) => reject(new Error(`Trim Error: ${err.message}`)))
-        .run();
-    });
-  }
-
-  // 4. Merge Video (Stitching) - VERSI LEBIH ROBUST (Concat Filter)
-  mergeVideoFiles(inputs: string[], output: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const inputArgs = inputs.flatMap(input => ['-i', input]);
-      const filterInputs = inputs.map((_, i) => `[${i}:v]`).join('');
-      const filterComplex = `${filterInputs}concat=n=${inputs.length}:v=1:a=0[v]`;
-
-      const command = ffmpeg();
-      
-      inputs.forEach(input => command.input(input));
-
-      command
-        .complexFilter([filterComplex])
-        .outputOptions(['-map [v]']) // Map hasil concat visual
-        .save(output)
-        .on('end', () => resolve())
-        .on('error', (err) => {
-            this.logger.error(`Merge Error: ${err.message}`);
-            reject(err);
-        });
-    });
-  }
-
-  // 5. Audio Helpers
+  // Audio Helpers
   createWavHeader(dataLength: number, options: any): Buffer {
     const { numChannels, sampleRate, bitsPerSample } = options;
     const byteRate = (sampleRate * numChannels * bitsPerSample) / 8;

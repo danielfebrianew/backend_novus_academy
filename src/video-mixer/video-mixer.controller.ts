@@ -2,19 +2,19 @@ import {
   Controller,
   Post,
   UseInterceptors,
-  UploadedFiles,
+  UploadedFile,
   Body,
   BadRequestException,
+  GoneException,
   UseGuards,
-  Req
+  Req,
 } from '@nestjs/common';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { VideoMixerService } from './video-mixer.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ResponseInterceptor } from '../common/interceptors/response.interceptor';
 import { ResponseMessage } from '../common/decorators/response-message.decorator';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('')
 @UseGuards(JwtAuthGuard)
@@ -23,57 +23,52 @@ export class VideoMixerController {
   constructor(private readonly videoService: VideoMixerService) {}
 
   @Post('video-mixer')
-  @ResponseMessage('Video sedang diproses')
+  @ResponseMessage('Endpoint deprecated')
+  async stitchVideo() {
+    throw new GoneException(
+      'This endpoint is deprecated. Use POST /api/v1/video-mixer/upload to upload pre-mixed videos.',
+    );
+  }
+
+  @Post('video-mixer/upload')
+  @ResponseMessage('Video uploaded successfully')
+  @Throttle({ upload: { limit: 15, ttl: 60000 } })
   @UseInterceptors(
-    FileFieldsInterceptor(
-      [
-        { name: 'clips', maxCount: 6 },
-        { name: 'audio', maxCount: 1 },
-      ],
-      {
-        storage: diskStorage({
-          destination: './uploads',
-          filename: (req, file, cb) => {
-            const randomName = Array(32).fill(null).map(() => (Math.round(Math.random() * 16)).toString(16)).join('');
-            cb(null, `${randomName}${extname(file.originalname)}`);
-          },
-        }),
-      },
-    ),
+    FileInterceptor('video', {
+      limits: { fileSize: 200 * 1024 * 1024 },
+    }),
   )
-  async stitchVideo(
-    @UploadedFiles() files: { clips?: Express.Multer.File[], audio?: Express.Multer.File[] },
-    @Body('variations') variations: string,
+  async uploadMixedVideo(
+    @UploadedFile() file: Express.Multer.File,
     @Body('jobId') jobId: string,
+    @Body('variationIndex') variationIndex: string,
     @Body('productName') productName: string,
     @Body('script') script: string,
     @Body('voiceGender') voiceGender: string,
-    @Req() req: any
+    @Req() req: any,
   ) {
-    if (!files.clips || files.clips.length < 2) {
-      throw new BadRequestException('Minimal upload 2 video klip.');
+    if (!file) {
+      throw new BadRequestException('Video file is required');
     }
-    if (!files.audio || files.audio.length === 0) {
-      throw new BadRequestException('File audio diperlukan.');
+    if (!file.mimetype.startsWith('video/')) {
+      throw new BadRequestException('Only video files are allowed');
     }
     if (!jobId) {
-      throw new BadRequestException('jobId diperlukan');
+      throw new BadRequestException('jobId is required');
     }
 
-    const clipPaths = files.clips.map(file => file.path);
-    const audioPath = files.audio[0].path;
-    const targetVar = parseInt(variations) || 1;
     const userId = req.user.userId;
+    const index = parseInt(variationIndex) || 1;
 
-    const result = await this.videoService.generateStitchedVideos(
-      clipPaths,
-      audioPath,
-      targetVar,
+    const result = await this.videoService.uploadProcessedVideo(
+      file.buffer,
+      file.mimetype,
       userId,
       jobId,
+      index,
       productName || 'Mixed Video',
       script || '',
-      voiceGender || 'female'
+      voiceGender || 'female',
     );
 
     return result;

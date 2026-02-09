@@ -96,6 +96,52 @@ export class GalleryService {
     }
   }
 
+  async upsertVideoToJob(
+    jobId: string,
+    variationNumber: number,
+    videoUrl: string,
+    fileName: string,
+  ): Promise<VideoResult> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const job = await queryRunner.manager.findOne(VideoJob, { where: { jobId } });
+      if (!job) {
+        throw new NotFoundException(`Job ${jobId} not found`);
+      }
+
+      const existing = await queryRunner.manager.findOne(VideoResult, {
+        where: { videoJobId: job.id, variationNumber },
+      });
+
+      if (existing) {
+        existing.videoUrl = videoUrl;
+        existing.fileName = fileName;
+        const saved = await queryRunner.manager.save(existing);
+        await queryRunner.commitTransaction();
+        return saved;
+      }
+
+      const videoResult = queryRunner.manager.create(VideoResult, {
+        videoJobId: job.id,
+        variationNumber,
+        videoUrl,
+        fileName,
+      });
+      const saved = await queryRunner.manager.save(videoResult);
+      await queryRunner.commitTransaction();
+      return saved;
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      if (err instanceof NotFoundException) throw err;
+      throw new InternalServerErrorException(`Failed to upsert video: ${err.message}`);
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
   async createJobWithVideos(dto: CreateVideoJobDto): Promise<VideoJob> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();

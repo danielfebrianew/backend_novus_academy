@@ -7,20 +7,18 @@ import { AwsStorageService } from './services/aws-storage.service';
 import { OpenAiScriptService } from './services/openai-script.service';
 import { WavespeedVideoService } from './services/wavespeed-video.service';
 import { GeminiTtsService } from './services/gemini-tts.service';
-import { FfmpegMixService } from './services/ffmpeg-mixer.service';
 import { GalleryModule } from 'src/gallery/gallery.module';
 
 @Module({
   imports: [ConfigModule, GalleryModule],
   controllers: [GenerateAiController],
   providers: [
-    GenerateAiService,     
-    VideoUtilsHelper,      
+    GenerateAiService,
+    VideoUtilsHelper,
     AwsStorageService,
     OpenAiScriptService,
     WavespeedVideoService,
     GeminiTtsService,
-    FfmpegMixService,
   ],
 })
 export class GenerateAiModule {}

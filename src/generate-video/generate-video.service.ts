@@ -2,12 +2,12 @@ import { Injectable, Logger, OnModuleInit, InternalServerErrorException, BadRequ
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as fs from 'fs';
 import * as path from 'path';
+import axios from 'axios';
 
 import { AwsStorageService } from './services/aws-storage.service';
 import { OpenAiScriptService } from './services/openai-script.service';
 import { WavespeedVideoService } from './services/wavespeed-video.service';
 import { GeminiTtsService } from './services/gemini-tts.service';
-import { FfmpegMixService } from './services/ffmpeg-mixer.service';
 import { VideoUtilsHelper } from './helpers/video-utils.helper';
 import { GalleryService } from 'src/gallery/gallery.service';
 
@@ -23,7 +23,6 @@ export class GenerateAiService implements OnModuleInit {
     private openaiScript: OpenAiScriptService,
     private wavespeedVideo: WavespeedVideoService,
     private geminiTts: GeminiTtsService,
-    private ffmpegMix: FfmpegMixService,
     private galleryService: GalleryService,
   ) {
     if (!fs.existsSync(this.tempDir)) fs.mkdirSync(this.tempDir);
@@ -55,10 +54,14 @@ export class GenerateAiService implements OnModuleInit {
     });
   }
 
-  // Method ini sudah PERFECT!
   private logProgress(jobId: string, message: string, progress: number) {
     this.logger.log(`[${jobId}] ${message}`);
     this.eventEmitter.emit('job.progress', { jobId, message, progress });
+  }
+
+  private async downloadToBuffer(url: string): Promise<Buffer> {
+    const response = await axios({ url, method: 'GET', responseType: 'arraybuffer' });
+    return Buffer.from(response.data);
   }
 
   async uploadImages(files: Array<Express.Multer.File>) {
@@ -75,12 +78,35 @@ export class GenerateAiService implements OnModuleInit {
     return await this.openaiScript.analyzeImageAndCreateScript(imageUrl, count, product);
   }
 
-  async processVideoVariations(images: string[], productName: string,prompts: string[], script: string, jobId: string, targetCount: number, voiceGender: string, userId: number) {
+  async uploadProcessedVideo(
+    fileBuffer: Buffer,
+    contentType: string,
+    jobId: string,
+    variationIndex: number,
+  ) {
+    const fileName = `variation_${variationIndex}.mp4`;
+    const folder = `generate/${jobId}`;
+
+    const s3Url = await this.awsStorage.uploadFile(
+      fileBuffer,
+      fileName,
+      contentType,
+      folder,
+    );
+
+    await this.galleryService.upsertVideoToJob(jobId, variationIndex, s3Url, fileName);
+
+    this.logger.log(`[${jobId}] Video variation ${variationIndex} uploaded by client`);
+
+    return { url: s3Url };
+  }
+
+  async processVideoVariations(images: string[], productName: string, prompts: string[], script: string, jobId: string, targetCount: number, voiceGender: string, userId: number) {
     let cleanupFiles: string[] = [];
     const promptCount = prompts.length;
 
     // --- LOGIC RANDOM VOICE PICKER ---
-    let voiceName = 'Achernar'; 
+    let voiceName = 'Achernar';
 
     if (voiceGender === 'male') {
       const maleVoices = ['Alnilam', 'Achird', 'Zubenelgenubi'];
@@ -124,20 +150,20 @@ export class GenerateAiService implements OnModuleInit {
     try {
       this.logProgress(jobId, "=== STARTING AI ENGINE ===", 0);
 
-      // ✅ STEP 2: Generate video clips (0-25%)
+      // STEP 1: Generate video clips (0-15%)
       this.logProgress(jobId, "Generating video clips...", 5);
 
       const videoTasks = prompts.map(async (prompt, idx) => {
         const selectedImage = images[idx] ? images[idx] : images[0];
         try {
           const url = await this.wavespeedVideo.generateVideo(prompt, selectedImage, idx, jobId);
-          return { status: 'success', url, index: idx };
+          return { status: 'success' as const, url, index: idx };
         } catch (err) {
-          return { status: 'failed', error: err, index: idx };
+          return { status: 'failed' as const, error: err, index: idx };
         }
       });
 
-      //  STEP 3: Generate audio in parallel (5-15%)
+      // STEP 2: Generate audio in parallel (5-15%)
       this.logProgress(jobId, "Generating voiceover...", 10);
 
       const audioTask = this.geminiTts.generateAudio(script, this.tempDir, voiceName);
@@ -148,7 +174,7 @@ export class GenerateAiService implements OnModuleInit {
       ]);
       cleanupFiles.push(audioPath);
 
-      // STEP 4: Validate clips (15-20%)
+      // STEP 3: Validate clips (15-20%)
       this.logProgress(jobId, "Validating video clips...", 15);
 
       const successVideos = videoResults
@@ -159,103 +185,60 @@ export class GenerateAiService implements OnModuleInit {
         throw new Error(`Failed to generate all video clips. Got ${successVideos.length}/${promptCount}`);
       }
 
-      //  STEP 5: Download clips (20-40%)
-      this.logProgress(jobId, `Downloading ${successVideos.length} clips...`, 20);
+      // STEP 4: Upload raw clips to S3 (20-60%)
+      this.logProgress(jobId, `Uploading ${successVideos.length} raw clips to S3...`, 20);
 
-      const rawClipPaths: string[] = [];
+      const clipUrls: string[] = [];
       const totalClips = successVideos.length;
 
       for (let i = 0; i < totalClips; i++) {
         const vid = successVideos[i];
-        const rawFileName = path.join(this.tempDir, `raw_${jobId}_${vid.index}.mp4`);
+        const clipFileName = `clip_${vid.index}.mp4`;
 
-        //  Progress per clip: 20% -> 40% (20% range / totalClips)
-        const downloadProgress = 20 + Math.floor(((i + 1) / totalClips) * 20);
-        this.logProgress(jobId, `Downloading clip ${i + 1}/${totalClips}...`, downloadProgress);
+        const uploadProgress = 20 + Math.floor(((i + 1) / totalClips) * 40);
+        this.logProgress(jobId, `Uploading clip ${i + 1}/${totalClips} to S3...`, uploadProgress);
 
-        await this.videoUtilsHelper.downloadFile(vid.url, rawFileName);
-        rawClipPaths.push(rawFileName);
-        cleanupFiles.push(rawFileName);
+        const clipBuffer = await this.downloadToBuffer(vid.url);
+        const s3ClipUrl = await this.awsStorage.uploadFile(
+          clipBuffer,
+          clipFileName,
+          'video/mp4',
+          `assets/${jobId}`,
+        );
+        clipUrls.push(s3ClipUrl);
       }
 
-      //  STEP 6: Generate unique shuffles (40-45%)
-      this.logProgress(jobId, `Creating ${targetCount} unique variations...`, 40);
+      // STEP 5: Upload audio to S3 (60-70%)
+      this.logProgress(jobId, "Uploading audio to S3...", 65);
+
+      const audioS3Url = await this.awsStorage.uploadFile(
+        audioPath,
+        'audio.wav',
+        'audio/wav',
+        `assets/${jobId}`,
+      );
+
+      // STEP 6: Generate unique shuffles (70-80%)
+      this.logProgress(jobId, `Creating ${targetCount} unique variation orders...`, 75);
 
       const uniqueOrders = this.videoUtilsHelper.generateUniqueShuffles(promptCount, targetCount);
-      
-      this.logProgress(jobId, `Generated ${uniqueOrders.length} unique orders`, 45);
 
-      // STEP 7: Stitch & Upload variations (45-100%)
-      const resultUrls: string[] = [];
-      const totalVariations = uniqueOrders.length;
+      // Build per-variation clipUrls (ordered by that variation's shuffle)
+      const variations = uniqueOrders.map((order, idx) => ({
+        variationIndex: idx + 1,
+        clipUrls: order.map(clipIdx => clipUrls[clipIdx]),
+        audioUrl: audioS3Url,
+      }));
 
-      for (let i = 0; i < totalVariations; i++) {
-        const order = uniqueOrders[i];
-        const orderedPaths = order.map(index => rawClipPaths[index]);
+      // Cleanup temp files
+      this.cleanup(cleanupFiles);
 
-        // Stitch visuals
-        const tempVisualPath = path.join(this.tempDir, `vis_${jobId}_${i}.mp4`);
-        cleanupFiles.push(tempVisualPath);
+      this.logProgress(jobId, "Raw assets ready. Awaiting client processing.", 100);
 
-        // ✅ Progress: 45% -> 70% (stitching phase)
-        const stitchProgress = 45 + Math.floor((i / totalVariations) * 25);
-        this.logProgress(jobId, `Stitching variation ${i + 1}/${totalVariations}...`, stitchProgress);
-
-        await this.ffmpegMix.stitchVisuals(orderedPaths, tempVisualPath);
-
-        // Merge audio
-        const finalFileName = `VARIATION_${jobId}_${i + 1}.mp4`;
-        const finalVarPath = path.join(this.tempDir, `VAR_${jobId}_${i}.mp4`);
-        cleanupFiles.push(finalVarPath);
-
-        // Progress: 70% -> 85% (merging phase)
-        const mergeProgress = 70 + Math.floor((i / totalVariations) * 15);
-        this.logProgress(jobId, `Merging audio for variation ${i + 1}/${totalVariations}...`, mergeProgress);
-
-        await this.ffmpegMix.mergeAudioVisual(tempVisualPath, audioPath, finalVarPath);
-
-        // Upload to S3
-        // Progress: 85% -> 100% (upload phase)
-        const uploadProgress = 85 + Math.floor(((i + 1) / totalVariations) * 15);
-        this.logProgress(jobId, `Uploading variation ${i + 1}/${totalVariations}...`, uploadProgress);
-
-        const s3Url = await this.awsStorage.uploadFile(finalVarPath, finalFileName, 'video/mp4', `results/${jobId}`);
-        resultUrls.push(s3Url);
-      }
-      
-      // Add videos to existing job
-      this.logProgress(jobId, "Saving videos to gallery...", 99);
-
-      try {
-        await this.galleryService.addVideosToJob(
-          jobId,
-          images[0],
-          resultUrls.map((url, idx) => ({
-            variationNumber: idx + 1,
-            videoUrl: url,
-            fileName: `VARIATION_${jobId}_${idx + 1}.mp4`
-          }))
-        );
-
-        this.logger.log(`[${jobId}] Successfully saved ${resultUrls.length} videos to gallery`);
-      } catch (dbError) {
-        this.logger.error(`[${jobId}] FAILED to save videos to gallery:`, dbError);
-
-        throw new InternalServerErrorException(
-          `Video generation succeeded but failed to save videos to gallery: ${dbError.message || 'Unknown error'}`
-        );
-      }
-
-    // STEP 8: Cleanup & Complete (100%)
-    this.logProgress(jobId, "Cleaning up temporary files...", 98);
-    this.cleanup(cleanupFiles);
-    
-    this.logProgress(jobId, "Process Completed! All videos ready.", 100);
-    
       return {
         jobId,
-        totalVariations: resultUrls.length,
-        variations: resultUrls
+        totalVariations: variations.length,
+        variations,
       };
 
     } catch (error) {
@@ -267,10 +250,9 @@ export class GenerateAiService implements OnModuleInit {
 
       const msg = error instanceof Error ? error.message : JSON.stringify(error);
       this.logger.error(`[${jobId}] ERROR: ${msg}`);
-      
-      // ✅ Emit error to frontend
+
       this.logProgress(jobId, `Error: ${msg}`, 0);
-      
+
       throw new InternalServerErrorException(msg);
     }
   }

@@ -31,7 +31,7 @@ export const createWinstonConfig = (
   // Better Stack transport — both dev & prod
   if (betterStackToken) {
     const logtail = new Logtail(betterStackToken, {
-      endpoint: 'https://s1228596.eu.logtail.com',
+      endpoint: 'https://s1723977.eu-fsn-3.betterstackdata.com',
     });
 
     transports.push(new LogtailTransport(logtail));

@@ -3,6 +3,7 @@ import {
   Controller,
   Post,
   UseInterceptors,
+  UploadedFile,
   UploadedFiles,
   BadRequestException,
   InternalServerErrorException,
@@ -12,7 +13,7 @@ import {
   UseGuards,
   Req,
 } from '@nestjs/common';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { GenerateAiService } from './generate-video.service';
 import { GenerateTextDto, GenerateVideoDto } from './dto/generate-video.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -81,6 +82,42 @@ export class GenerateAiController {
       dto.targetCount,
       dto.voiceGender || 'female',
       userId
+    );
+
+    return result;
+  }
+
+  @Throttle({ upload: { limit: 15, ttl: 60000 } })
+  @Post('upload-video')
+  @UseInterceptors(
+    FileInterceptor('video', {
+      limits: { fileSize: 200 * 1024 * 1024 },
+    }),
+  )
+  @ResponseMessage('Video uploaded successfully')
+  async uploadGeneratedVideo(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('jobId') jobId: string,
+    @Body('productName') productName: string,
+    @Body('variationIndex') variationIndex: string,
+    @Req() req: any,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Video file is required');
+    }
+    if (!file.mimetype.startsWith('video/')) {
+      throw new BadRequestException('Only video files are allowed');
+    }
+    if (!jobId) {
+      throw new BadRequestException('jobId is required');
+    }
+
+    const index = parseInt(variationIndex) || 1;
+    const result = await this.generateAiService.uploadProcessedVideo(
+      file.buffer,
+      file.mimetype,
+      jobId,
+      index,
     );
 
     return result;
