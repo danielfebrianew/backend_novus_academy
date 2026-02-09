@@ -17,7 +17,7 @@ async function bootstrap() {
   const logger = app.get(AppLogger);
   app.useLogger(logger);
 
-    // Helmet DULU (sebelum CORS)
+  // Helmet DULU (sebelum CORS)
   app.use(helmet({
     crossOriginResourcePolicy: false,
     crossOriginOpenerPolicy: false,  // tambah ini
@@ -70,8 +70,8 @@ async function bootstrap() {
     }),
   );
 
-  app.use(json({ limit: '10mb' }));
-  app.use(urlencoded({ extended: true, limit: '10mb' }));
+  app.use(json({ limit: '100mb' }));
+  app.use(urlencoded({ extended: true, limit: '100mb' }));
 
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
