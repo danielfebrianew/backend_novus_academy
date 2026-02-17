@@ -54,13 +54,14 @@ export class WavespeedVideoService {
 
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
-        // Log seluruh data response untuk debugging
         this.logger.error(`[${reqId}][Clip ${index}] Status: ${error.response.status}`);
-        this.logger.error(`[${reqId}][Clip ${index}] Response Data: ${JSON.stringify(error.response.data)}`);
+        this.logger.error(`[${reqId}][Clip ${index}] Response Body: ${JSON.stringify(error.response.data) ?? 'empty'}`);
+        this.logger.error(`[${reqId}][Clip ${index}] Image URL: ${imageUrl}`);
+        this.logger.error(`[${reqId}][Clip ${index}] Prompt: ${prompt}`);
       }
 
       const msg = axios.isAxiosError(error)
-        ? error.response?.data?.error || error.message
+        ? error.response?.data?.message || error.response?.data?.error || error.message
         : (error as Error).message;
 
       this.logger.error(`[${reqId}][Clip ${index}] Wavespeed Error: ${msg}`);

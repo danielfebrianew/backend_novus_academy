@@ -19,6 +19,7 @@ import { GalleryModule } from './gallery/gallery.module';
 import { GenerateImageModule } from './generate-image/generate-image.module';
 import { LoggerModule } from './logger/logger.module';
 import { LoggingInterceptor } from './logger/interceptors/logging.interceptor';
+import { GenerateProModule } from './generate-pro/generate-pro.module';
 
 @Module({
   imports: [
@@ -83,6 +84,7 @@ import { LoggingInterceptor } from './logger/interceptors/logging.interceptor';
     ReportsModule,
     UploadAwsModule,
     GalleryModule,
+    GenerateProModule,
   ],
   controllers: [],
   providers: [
