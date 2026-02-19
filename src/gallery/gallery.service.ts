@@ -3,7 +3,7 @@
 import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import { VideoJob } from './entities/video-job.entity';
+import { VideoJob, VideoJobStatus } from './entities/video-job.entity';
 import { VideoResult } from './entities/video-result.entity';
 import { CreateVideoJobDto } from './dto/create-video-job.dto';
 
@@ -183,6 +183,27 @@ export class GalleryService {
     }
   }
 
+  async updateJobStatus(jobId: string, status: VideoJobStatus, failMsg?: string): Promise<void> {
+    const result = await this.videoJobRepository.update(
+      { jobId },
+      { status, failMsg: failMsg ?? null },
+    );
+    if (result.affected === 0) {
+      console.warn(`[updateJobStatus] Job ${jobId} not found`);
+    }
+  }
+
+  async findActiveJob(userId: number): Promise<VideoJob | null> {
+    return this.videoJobRepository.findOne({
+      where: { userId, status: VideoJobStatus.PROCESSING },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findJobByJobId(jobId: string): Promise<VideoJob | null> {
+    return this.videoJobRepository.findOne({ where: { jobId } });
+  }
+
   async findAllJobs(userId: number, page: number = 1, limit: number = 30) {
     const [jobs, total] = await this.videoJobRepository.findAndCount({
       where: { userId },
@@ -199,6 +220,8 @@ export class GalleryService {
         thumbnailUrl: job.thumbnailUrl,
         videoCount: job.targetCount,
         voiceGender: job.voiceGender,
+        status: job.status,
+        failMsg: job.failMsg,
         createdAt: job.createdAt,
       })),
       meta: {

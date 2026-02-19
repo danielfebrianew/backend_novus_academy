@@ -11,6 +11,7 @@ export class KieVideoService {
 
   async createTask(
     prompt: string,
+    imageUrl: string,
     aspectRatio: string,
     nFrames: string,
     callBackUrl: string,
@@ -23,15 +24,15 @@ export class KieVideoService {
       const response = await axios.post(
         `${this.baseUrl}/jobs/createTask`,
         {
-          model: 'sora-2-text-to-video',
+          model: 'sora-2-image-to-video',
           callBackUrl,
           progressCallBackUrl,
           input: {
             prompt,
+            image_urls: [imageUrl],
             aspect_ratio: aspectRatio,
             n_frames: nFrames,
             remove_watermark: true,
-            upload_method: 's3',
           },
         },
         {
@@ -66,6 +67,39 @@ export class KieVideoService {
         : (error as Error).message;
 
       this.logger.error(`[${reqId}] Kie.ai Error: ${msg}`);
+      throw new Error(msg);
+    }
+  }
+
+  async queryTask(taskId: string): Promise<any> {
+    const apiKey = this.configService.get<string>('KIE_AI');
+
+    try {
+      const response = await axios.get(
+        `${this.baseUrl}/jobs/recordInfo`,
+        {
+          params: { taskId },
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+          },
+        },
+      );
+
+      this.logger.log(`[${taskId}] Query response: ${JSON.stringify(response.data)}`);
+
+      const { code, data, message, msg } = response.data;
+
+      if (code !== 200) {
+        throw new Error(`Kie.ai query error: ${message || msg}`);
+      }
+
+      return data;
+    } catch (error) {
+      const msg = axios.isAxiosError(error)
+        ? error.response?.data?.message || error.response?.data?.error || error.message
+        : (error as Error).message;
+
+      this.logger.error(`[${taskId}] Query error: ${msg}`);
       throw new Error(msg);
     }
   }

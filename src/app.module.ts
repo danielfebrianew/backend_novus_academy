@@ -20,6 +20,7 @@ import { GenerateImageModule } from './generate-image/generate-image.module';
 import { LoggerModule } from './logger/logger.module';
 import { LoggingInterceptor } from './logger/interceptors/logging.interceptor';
 import { GenerateProModule } from './generate-pro/generate-pro.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -31,7 +32,7 @@ import { GenerateProModule } from './generate-pro/generate-pro.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const redisUrl = config.get<string>('REDIS_URL') || 'redis://localhost:6379'; 
+        const redisUrl = config.get<string>('REDIS_URL') || 'redis://localhost:6379';
 
         const isTls = redisUrl.startsWith('rediss://');
 
@@ -67,8 +68,17 @@ import { GenerateProModule } from './generate-pro/generate-pro.module';
           database: configService.get<string>('DB_NAME'),
           timezone: 'Z',
           autoLoadEntities: true,
-          synchronize: !isProduction,
+          synchronize: false,
+          migrationsRun: true,
+          migrations: [__dirname + '/migrations/*{.ts,.js}'],
           logging: !isProduction,
+          extra: {
+            waitForConnections: true,
+            connectionLimit: 10,
+            queueLimit: 0,
+            enableKeepAlive: true, 
+            keepAliveInitialDelay: 10000
+          }
         };
       },
     }),
@@ -85,6 +95,7 @@ import { GenerateProModule } from './generate-pro/generate-pro.module';
     UploadAwsModule,
     GalleryModule,
     GenerateProModule,
+    NotificationsModule,
   ],
   controllers: [],
   providers: [
