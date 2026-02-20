@@ -6,7 +6,7 @@ import { GenerateProController } from './generate-pro.controller';
 import { GenerateProService } from './generate-pro.service';
 import { AwsStorageService } from './services/aws-storage.service';
 import { KieVideoService } from './services/kie-video.service';
-import { OpenAiPromptService } from './services/openai-prompt.service';
+import { OpenAiPromptService } from './services/gemini-prompt.service';
 
 @Module({
   imports: [ConfigModule, GalleryModule, NotificationsModule],

@@ -6,7 +6,7 @@ import { VideoJobStatus } from 'src/gallery/entities/video-job.entity';
 import { CreateGenerateProDto } from './dto/create-generate-pro.dto';
 import { AwsStorageService } from './services/aws-storage.service';
 import { KieVideoService } from './services/kie-video.service';
-import { OpenAiPromptService } from './services/openai-prompt.service';
+import { OpenAiPromptService } from './services/gemini-prompt.service';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { NotificationType } from 'src/notifications/entities/notification.entity';
 
