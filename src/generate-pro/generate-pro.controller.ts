@@ -57,7 +57,7 @@ export class GenerateProController {
   @Post('create')
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor('image'))
-  @ResponseMessage('Task submitted to Kie.ai')
+  @ResponseMessage('Task submitted to AI')
   async createTask(
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: CreateGenerateProDto,
@@ -98,7 +98,8 @@ export class GenerateProController {
         return null; // Job sudah selesai, tidak ada active job
       }
     } catch {
-      // Jika query Kie.ai gagal, tetap return job yang ada
+      await this.generateProService.syncJobStatus(job.jobId, 'fail', [], 'Task not found in Kie.ai');
+      return null;
     }
 
     return {

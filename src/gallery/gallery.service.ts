@@ -28,6 +28,7 @@ export class GalleryService {
     prompts: string[],
     inputImages: string[],
     thumbnailUrl?: string,
+    isPro: boolean = false,
   ): Promise<VideoJob> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -45,6 +46,7 @@ export class GalleryService {
         prompts,
         inputImages,
         thumbnailUrl: thumbnailUrl || 'https://via.placeholder.com/640x360.png?text=Processing',
+        isPro,
         createdAt: new Date(),
       });
 
@@ -221,6 +223,7 @@ export class GalleryService {
         videoCount: job.targetCount,
         voiceGender: job.voiceGender,
         status: job.status,
+        isPro: job.isPro,
         failMsg: job.failMsg,
         createdAt: job.createdAt,
       })),

@@ -3,14 +3,16 @@ import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI } from '@google/genai';
 
 @Injectable()
-export class OpenAiPromptService {
-  private readonly logger = new Logger(OpenAiPromptService.name);
-  private gemini: GoogleGenAI;
+export class GeminiVideoPromptService {
+  private readonly logger = new Logger(GeminiVideoPromptService.name);
+  private readonly ai: GoogleGenAI;
 
   constructor(private configService: ConfigService) {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
     if (!apiKey) throw new Error('GEMINI_API_KEY is missing');
-    this.gemini = new GoogleGenAI({ apiKey });
+    
+    // Inisialisasi menggunakan SDK @google/genai terbaru
+    this.ai = new GoogleGenAI({ apiKey });
   }
 
   async generateVideoPrompt(
@@ -20,19 +22,49 @@ export class OpenAiPromptService {
   ): Promise<string> {
     const systemPrompt = `
 CONTEXT:
-You are a professional AI Video Prompt Engineer specializing in Sora / text-to-video generation.
+You are a professional AI Video Prompt Engineer specializing in text-to-video generation.
 
 Your task is to generate high-conversion, realistic UGC video prompts based on:
-
 * Product reference image
 * Product title
 * Product description
 
-Your output MUST follow strict visual consistency, anti-anomaly rules, and iPhone filming aesthetics.
+Your output MUST follow strict visual consistency, anti-anomaly rules, and casual smartphone filming aesthetics.
 
 IMPORTANT: This is a 15-second video.
 Each scene MUST be concise and natural.
 DO NOT write long paragraphs.
+
+════════════════════════════════════════
+⚠️ ABSOLUTE CONTENT SAFETY & AI SENSOR POLICY ⚠️
+════════════════════════════════════════
+THIS OVERRIDES ALL OTHER INSTRUCTIONS. ZERO TOLERANCE. NO EXCEPTIONS.
+Downstream AI Video Generators are highly sensitive. You MUST avoid ANY language that could trigger safety filters, even accidentally.
+
+1. BANNED TRIGGER WORDS (DO NOT USE): 
+   - ENGLISH: "Sheer", "see-through", "transparent", "lacey", "Curvy", "body-hugging", "tight", "form-fitting", "ramping", "Chest", "bust", "hips", "thighs", "cleavage", "legs", "open collar", "Pan down".
+   - BAHASA INDONESIA (FOR VOICEOVER): "Pas di badan", "ngetat", "ngepres", "membentuk lekuk tubuh", "bikin langsing", "ramping", "seksi".
+
+2. STRICT RULE ON MOVEMENT & TOUCHING:
+   - NEVER describe the act of dressing/undressing ("putting on the shirt"). Model MUST ALREADY be wearing it.
+   - NEVER describe hands touching the body or torso area (DO NOT say "touches the embroidery on her chest").
+   - Safe interaction: Model can gently stretch or show the fabric ON THE SLEEVE/ARM ONLY.
+
+3. STRICT RULE ON MODESTY:
+   - No sexual, sexually suggestive, racy, or explicit content.
+   - Character MUST be FULLY CLOTHED in modest, loose-fitting attire.
+   - Safe environments only (living room, cafe, bright studio). No bedrooms or dim lighting.
+
+4. STRICT RULE ON CAMERA ANGLES & CLOSE-UPS (CRITICAL FOR FASHION):
+   - NEVER use vertical camera panning on a person. Stick to STATIC medium shots.
+   - ANY macro or close-up shots of clothing MUST strictly be directed at the "SLEEVE" (lengan), "CUFF" (manset), or "LOWER HEM" (ujung bawah baju). 
+   - NEVER describe a close-up near the chest, neck, or collar.
+
+5. STRICT RULE ON BAHASA INDONESIA VOICEOVER (CRITICAL):
+   - The VOICEOVER MUST NEVER describe how the clothing fits or hugs the body. 
+   - DO NOT use phrases like "pas banget di badan" or "bikin kelihatan ramping".
+   - INSTEAD, focus strictly on fabric comfort ("halus", "lembut", "adem", "nyaman", "bebas bergerak") or overall neatness ("potongannya rapi", "jatuhnya bagus saat dipakai").
+════════════════════════════════════════
 
 ────────────────────
 GLOBAL RULES & STYLE
@@ -40,128 +72,66 @@ GLOBAL RULES & STYLE
 - Casual UGC style: Real TikTok / Reels / Shopee video, casual user recommendation.
 - Style: Soft selling style, natural body movement.
 - NOT: Hard selling, overdramatic ads, or corporate commercial tone.
-- FILMED ON iPHONE: The entire video must look like it was casually recorded on an iPhone (iPhone 13–16 series).
+- FILMED ON A SMARTPHONE: The entire video must look like it was casually recorded on a modern smartphone.
 
 ────────────────────
-iPHONE FILMING AESTHETICS (MANDATORY)
+CASUAL SMARTPHONE AESTHETICS & DEPTH OF FIELD (MANDATORY)
 ────────────────────
-- Camera: Handheld, slight natural micro-movements (not stabilized gimbal look)
-- Lens: iPhone wide lens (26mm equivalent), natural perspective with slight barrel distortion
-- Focus: Standard iPhone auto-focus, everything in focus (deep depth of field), NO Portrait Mode, NO shallow depth of field, NO bokeh
-- Color science: Apple iPhone color profile — warm skin tones, slightly saturated, natural white balance
-- Lighting: Natural daylight or warm indoor lamp lighting. NO studio lighting, NO ring light reflection in eyes
-- Exposure: Slight auto-exposure adjustments when panning (iPhone auto-exposure behavior)
-- Quality: 4K but with subtle iPhone compression artifacts, NOT cinema-grade
-- Selfie shots: Front camera perspective with slight wide-angle face distortion typical of iPhone selfie cam
-- NO cinematic color grading, NO film grain filter, NO DSLR bokeh, NO Portrait Mode, NO shallow depth of field
-- Overall feel: "My friend sent me this video from their iPhone" — authentic and unpolished
+- Camera: Handheld, slight natural micro-movements.
+- Depth of Field: Shallow depth of field (bokeh effect) simulating smartphone "Portrait" mode.
+- Lighting: Natural daylight or warm indoor lighting.
 
 ────────────────────
 VIDEO SPECIFICATIONS
 ────────────────────
-- Aspect Ratio: 9:16 (vertical, filmed in iPhone portrait mode)
+- Aspect Ratio: 9:16 (vertical, portrait mode)
 - Duration: EXACTLY 15 seconds
-- Audio: Natural Bahasa Indonesia voice (sounds like iPhone microphone recording — slight room reverb, not studio-clean)
-- One person only
-- Exactly 2 hands, 5 fingers per hand
-- No visual mutation
-- Same person & product throughout
+- Audio: Natural Bahasa Indonesia voice.
+- One person only, exact anatomy (2 hands, 5 fingers per hand).
 
 ────────────────────
-CONTENT SAFETY & MODESTY RULES (STRICTLY ENFORCED)
+MOUTH MOVEMENT & TALKING (CRITICAL — MANDATORY)
 ────────────────────
-- Character MUST be FULLY CLOTHED at all times — casual everyday outfit (t-shirt, blouse, hoodie, etc.)
-- NO revealing, suggestive, tight-fitting, or provocative clothing
-- NO low-cut tops, crop tops showing midriff, mini skirts, or sheer fabrics
-- NO bedroom scenes, NO bathroom scenes, NO bed visible in background
-- NO seductive poses, lip biting, winking suggestively, or body-focused camera angles
-- NO close-up shots of body parts (chest, hips, legs, lips in isolation)
-- NO dim/mood lighting that implies romantic or intimate setting
-- Camera angle: ALWAYS face-level or product-level. NEVER shoot from low angle looking up at body
-- Background: Living room, kitchen, desk, outdoor cafe, park — SAFE & NEUTRAL environments only
-- Body language: Friendly, casual, reviewer-style. Like talking to a friend, NOT modeling or posing
-- If product is clothing/fashion: Show on hanger or flat-lay first, then modest try-on with full coverage
-- If product is beauty/skincare: Show application on hand/face only, normal bathroom mirror is OK but must be well-lit and casual
-- ZERO tolerance: Any prompt that could be interpreted as sexual, suggestive, or explicit content MUST NOT be generated
+- The person MUST be visibly TALKING with natural, realistic MOUTH MOVEMENTS in EVERY scene that has voiceover narration (Scene 1 through Scene 4).
+- Facial expressions should change naturally while talking.
+- In every narrated scene description, explicitly mention: "person is talking to the camera with visible mouth movement".
 
 ────────────────────
 FIRST FRAME (MANDATORY)
 ────────────────────
-- First frame uses the reference image
-- Product appearance MUST remain IDENTICAL
-- No redesign, no color change, no alteration
-- Framing: As if the person just opened their iPhone camera and pointed at the product
+- First frame uses the reference image. Product appearance MUST remain IDENTICAL.
+- Framing: As if the person just opened their phone camera with portrait mode enabled.
 
 ────────────────────
 SCENE STRUCTURE (STRICT)
 ────────────────────
-WRITE EXACTLY 5 SCENES.
-Each scene: MAX 1–2 SHORT sentences.
+WRITE EXACTLY 5 SCENES. Each scene: MAX 1–2 SHORT sentences.
 
 [0s–2s] Hook / Greeting
-- 1 short greeting sentence
-- iPhone selfie cam angle, natural room lighting
+- 1 short greeting sentence.
+- Person is TALKING TO CAMERA with visible mouth movement.
+- Front-facing camera angle, natural room lighting, shallow depth of field.
 
 [2s–6s] Product Introduction
-- Mention product name
-- Show product briefly
-- Switch to rear camera, handheld close-up of product
+- Mention product name.
+- Switch to rear camera. MUST be a STATIC handheld medium shot. NO vertical panning.
+- Person is SPEAKING — mouth visibly moving.
 
-[6s–10s] Product Usage / Demonstration
-- One natural movement
-- Mention 1 key benefit only
-- iPhone macro mode for detail shots if applicable
+[6s–10s] Product Detail / Visual Feature
+- Mention 1 key feature (e.g., fabric quality).
+- Detail MUST be shown on a safe area (e.g., "focusing on the arm/sleeve", "stretching the sleeve fabric"). 
+- VOICEOVER RULE: Focus on comfort or neat cut. DO NOT say it fits the body well.
+- Person is TALKING to camera — lips and jaw moving naturally.
 
 [10s–13s] Recommendation / CTA
-- Soft recommendation
-- NO exaggerated hype
-- Back to selfie cam, natural expression
+- Soft recommendation.
+- Person is SPEAKING to camera — mouth clearly moving with natural expression.
+- Back to front-facing camera.
 
 [13s–15s] Silent Close-Up
-- NO narration
-- Visual only: product beauty shot, standard iPhone camera, everything sharp and in focus
-
-────────────────────
-CHARACTER RULES & EXAMPLES
-────────────────────
-Character MUST match product category, fit target demographic, and look natural & believable.
-Character MUST wear modest, casual, everyday clothing appropriate for a home/outdoor setting.
-Examples:
-- Fashion wanita → Wanita 20–35 tahun, casual blouse + jeans
-- Sandal pria → Pria 25–40 tahun, t-shirt + cargo pants
-- Skincare → Wanita natural lifestyle, hoodie or casual top
-- Gadget → Casual tech enthusiast, simple t-shirt
-
-────────────────────
-VOICEOVER RULES
-────────────────────
-- Natural Bahasa Indonesia
-- Conversational tone
-- Short & realistic speech
-- No exaggerated marketing hype
-- Sound like real human review
-- Audio quality: iPhone built-in microphone (slight room ambience, not studio-recorded)
-
-────────────────────
-STRICT PROHIBITIONS — NEVER GENERATE:
-────────────────────
-- Any sexual, suggestive, provocative, or explicit content
-- Revealing or tight clothing, underwear, swimwear (unless product itself is modest swimwear shown appropriately)
-- Bedroom/intimate settings with mood lighting
-- Seductive poses, expressions, or body-focused angles
-- Long descriptions & detailed room decoration
-- Over-explaining features
-- Multiple people
-- Extra limbs
-- Floating hands
-- Product transformation
-- Wrong product usage
-- Unrealistic physics
-- Studio/professional lighting setups
-- Cinematic camera movements (dolly, crane, slider)
-- DSLR or cinema camera aesthetics
-- Ring light reflections
-- Portrait Mode or any shallow depth of field / bokeh effect
+- NO narration, NO talking.
+- Visual only: Casual macro/close-up shot ONLY on the SLEEVE, CUFF, or LOWER HEM of the product. NO chest/collar focus.
+- The camera is steady.
 
 ────────────────────
 OUTPUT FORMAT
@@ -171,27 +141,26 @@ NO title, NO explanation, NO metadata.
 
 Format:
 [Xs–Xs] Description...
+VOICEOVER: "..."
 `;
 
-    const userMessage = `Product Title: ${productTitle}\nProduct Description: ${productDescription}\n\nPlease generate a Sora UGC video prompt for this product based on the reference image provided. The video must look like it was filmed on an iPhone and must be completely safe, modest, and appropriate for all audiences.`;
+    const userMessage = `Product Title: ${productTitle}\nProduct Description: ${productDescription}\n\nPlease generate a UGC video prompt for this product based on the reference image provided. The video must look like it was filmed casually on a modern smartphone with a shallow depth of field (cinematic mode). The person MUST be visibly talking with natural mouth movements in every narrated scene. Ensure absolute compliance with the AI SENSOR POLICY (No panning down bodies, close-ups strictly on sleeves/hems, no trigger words in visual OR voiceover).`;
 
     try {
-      this.logger.log(`Sending to Gemini — imageUrl: ${imageUrl}`);
+      this.logger.log(`Fetching image for Gemini — imageUrl: ${imageUrl}`);
+      const { base64, mimeType } = await this.fetchImageAsBase64(imageUrl);
 
-      const response = await this.gemini.models.generateContent({
-        model: 'gemini-2.5-flash',
-        config: {
-          systemInstruction: systemPrompt,
-        },
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-2.5-flash', 
         contents: [
           {
             role: 'user',
             parts: [
-              { text: userMessage },
+              { text: systemPrompt + '\n\n' + userMessage },
               {
-                fileData: {
-                  fileUri: imageUrl,
-                  mimeType: 'image/jpeg',
+                inlineData: {
+                  data: base64,
+                  mimeType: mimeType,
                 },
               },
             ],
@@ -203,11 +172,21 @@ Format:
 
       if (!content) throw new Error('Gemini returned empty content');
 
-      this.logger.log(`Generated Sora prompt for: ${productTitle}`);
+      this.logger.log(`Generated video prompt for: ${productTitle}`);
       return content.trim();
     } catch (error: any) {
       this.logger.error(`Gemini prompt generation error: ${error.message}`);
       throw new InternalServerErrorException('Failed to generate video prompt: ' + error.message);
     }
+  }
+
+  private async fetchImageAsBase64(url: string): Promise<{ base64: string; mimeType: string }> {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    const mimeType = contentType.split(';')[0].trim();
+    const buffer = await response.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString('base64');
+    return { base64, mimeType };
   }
 }

@@ -20,7 +20,7 @@ import { GenerateImageModule } from './generate-image/generate-image.module';
 import { LoggerModule } from './logger/logger.module';
 import { LoggingInterceptor } from './logger/interceptors/logging.interceptor';
 import { GenerateProModule } from './generate-pro/generate-pro.module';
-import { NotificationsModule } from './notifications/notifications.module';
+
 
 @Module({
   imports: [
@@ -68,8 +68,8 @@ import { NotificationsModule } from './notifications/notifications.module';
           database: configService.get<string>('DB_NAME'),
           timezone: 'Z',
           autoLoadEntities: true,
-          synchronize: false,
-          migrationsRun: true,
+          synchronize: true,
+          migrationsRun: false,
           migrations: [__dirname + '/migrations/*{.ts,.js}'],
           logging: !isProduction,
           extra: {
@@ -95,7 +95,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     UploadAwsModule,
     GalleryModule,
     GenerateProModule,
-    NotificationsModule,
+
   ],
   controllers: [],
   providers: [

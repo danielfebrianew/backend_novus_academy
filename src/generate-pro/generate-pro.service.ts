@@ -6,9 +6,7 @@ import { VideoJobStatus } from 'src/gallery/entities/video-job.entity';
 import { CreateGenerateProDto } from './dto/create-generate-pro.dto';
 import { AwsStorageService } from './services/aws-storage.service';
 import { KieVideoService } from './services/kie-video.service';
-import { OpenAiPromptService } from './services/gemini-prompt.service';
-import { NotificationsService } from 'src/notifications/notifications.service';
-import { NotificationType } from 'src/notifications/entities/notification.entity';
+import { GeminiVideoPromptService } from './services/gemini-prompt.service';
 
 export class KieCallbackData {
   taskId: string;
@@ -35,12 +33,11 @@ export class GenerateProService {
 
   constructor(
     private readonly kieVideoService: KieVideoService,
-    private readonly openAiPromptService: OpenAiPromptService,
+    private readonly geminiVideoPromptService: GeminiVideoPromptService,
     private readonly awsStorageService: AwsStorageService,
     private readonly galleryService: GalleryService,
     private readonly configService: ConfigService,
     private readonly eventEmitter: EventEmitter2,
-    private readonly notificationsService: NotificationsService,
   ) {}
 
   async submitTask(dto: CreateGenerateProDto, file: Express.Multer.File, userId: number) {
@@ -61,7 +58,7 @@ export class GenerateProService {
 
     // Step 2: Generate structured Sora prompt via Gemini Vision
     this.logProgress(reqId, 'Generating video prompt...', 15);
-    const videoPrompt = await this.openAiPromptService.generateVideoPrompt(
+    const videoPrompt = await this.geminiVideoPromptService.generateVideoPrompt(
       imageUrl,
       dto.productTitle,
       dto.productDescription,
@@ -86,12 +83,13 @@ export class GenerateProService {
       taskId,
       dto.productTitle,
       videoPrompt,
-      '-',
+      'female',
       1,
       1,
       [videoPrompt],
       [imageUrl],
       imageUrl,
+      true,
     );
 
     // Update status ke processing (taskId = jobId di database)
@@ -104,9 +102,6 @@ export class GenerateProService {
   async handleCallback(payload: KieCallbackPayload) {
     const { data } = payload;
     const jobId = data.taskId;
-
-    // Lookup job untuk userId dan productName (untuk notifikasi)
-    const job = await this.galleryService.findJobByJobId(jobId);
 
     if (data.state === 'success') {
       let resultUrls: string[] = [];
@@ -138,17 +133,6 @@ export class GenerateProService {
         progress: 100,
         resultUrls,
       });
-
-      // Kirim notifikasi success
-      if (job) {
-        await this.notificationsService.create(
-          job.userId,
-          NotificationType.VIDEO_SUCCESS,
-          'Video selesai!',
-          `Video "${job.productName}" berhasil dibuat`,
-          jobId,
-        );
-      }
     } else {
       await this.galleryService.updateJobStatus(jobId, VideoJobStatus.FAILED, data.failMsg ?? undefined);
       this.logger.error(`[${jobId}] Task failed: ${data.failMsg}`);
@@ -158,17 +142,6 @@ export class GenerateProService {
         progress: -1,
         failMsg: data.failMsg,
       });
-
-      // Kirim notifikasi failed
-      if (job) {
-        await this.notificationsService.create(
-          job.userId,
-          NotificationType.VIDEO_FAILED,
-          'Video gagal',
-          data.failMsg ?? 'Terjadi kesalahan saat membuat video',
-          jobId,
-        );
-      }
     }
   }
 
@@ -237,22 +210,10 @@ export class GenerateProService {
 
       await this.galleryService.updateJobStatus(jobId, VideoJobStatus.SUCCESS);
       this.logger.log(`[${jobId}] Synced status to success`);
-
-      await this.notificationsService.create(
-        job.userId, NotificationType.VIDEO_SUCCESS,
-        'Video selesai!', `Video "${job.productName}" berhasil dibuat`, jobId,
-      );
-
       this.eventEmitter.emit('pro.job.progress', { jobId, message: 'success', progress: 100, resultUrls });
     } else if (state === 'fail') {
       await this.galleryService.updateJobStatus(jobId, VideoJobStatus.FAILED, failMsg ?? undefined);
       this.logger.log(`[${jobId}] Synced status to failed`);
-
-      await this.notificationsService.create(
-        job.userId, NotificationType.VIDEO_FAILED,
-        'Video gagal', failMsg ?? 'Terjadi kesalahan saat membuat video', jobId,
-      );
-
       this.eventEmitter.emit('pro.job.progress', { jobId, message: 'failed', progress: -1, failMsg });
     }
   }

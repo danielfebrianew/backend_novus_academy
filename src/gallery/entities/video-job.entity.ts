@@ -52,6 +52,9 @@ export class VideoJob {
   })
   status: VideoJobStatus;
 
+  @Column({ name: 'is_pro', default: false })
+  isPro: boolean;
+
   @Column({ name: 'fail_msg', type: 'text', nullable: true })
   failMsg: string | null;
 
