@@ -20,6 +20,7 @@ import { GenerateImageModule } from './generate-image/generate-image.module';
 import { LoggerModule } from './logger/logger.module';
 import { LoggingInterceptor } from './logger/interceptors/logging.interceptor';
 import { GenerateProModule } from './generate-pro/generate-pro.module';
+import { GenerateTokenModule } from './generate_token/generate_token.module';
 
 
 @Module({
@@ -95,6 +96,7 @@ import { GenerateProModule } from './generate-pro/generate-pro.module';
     UploadAwsModule,
     GalleryModule,
     GenerateProModule,
+    GenerateTokenModule,
 
   ],
   controllers: [],
