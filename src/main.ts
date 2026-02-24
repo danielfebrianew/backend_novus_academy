@@ -32,6 +32,7 @@ async function bootstrap() {
       'https://member.novusnextgen.com',
       'app://-',
       'app://.',
+      /\.scf\.usercontent\.goog$/,
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
