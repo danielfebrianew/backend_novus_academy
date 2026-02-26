@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
-import { AccessToken } from './entities/generate_token.entity';
+import { AccessToken } from './entities/generate-token.entity';
 import { randomBytes } from 'crypto';
 
 @Injectable()

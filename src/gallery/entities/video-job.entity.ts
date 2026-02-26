@@ -55,6 +55,9 @@ export class VideoJob {
   @Column({ name: 'is_pro', default: false })
   isPro: boolean;
 
+  @Column({ name: 'audio_url', length: 500, nullable: true })
+  audioUrl: string;
+
   @Column({ name: 'fail_msg', type: 'text', nullable: true })
   failMsg: string | null;
 

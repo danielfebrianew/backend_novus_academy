@@ -8,8 +8,10 @@ import { AwsStorageService } from './services/aws-storage.service';
 import { OpenAiScriptService } from './services/openai-script.service';
 import { WavespeedVideoService } from './services/wavespeed-video.service';
 import { GeminiTtsService } from './services/gemini-tts.service';
+import { FalComposeService } from './services/fal-compose.service';
 import { VideoUtilsHelper } from './helpers/video-utils.helper';
 import { GalleryService } from 'src/gallery/gallery.service';
+import { VideoJobStatus } from 'src/gallery/entities/video-job.entity';
 
 @Injectable()
 export class GenerateAiService implements OnModuleInit {
@@ -23,6 +25,7 @@ export class GenerateAiService implements OnModuleInit {
     private openaiScript: OpenAiScriptService,
     private wavespeedVideo: WavespeedVideoService,
     private geminiTts: GeminiTtsService,
+    private falCompose: FalComposeService,
     private galleryService: GalleryService,
   ) {
     if (!fs.existsSync(this.tempDir)) fs.mkdirSync(this.tempDir);
@@ -76,29 +79,6 @@ export class GenerateAiService implements OnModuleInit {
 
   async generateText(imageUrl: string, count: number, product: string) {
     return await this.openaiScript.analyzeImageAndCreateScript(imageUrl, count, product);
-  }
-
-  async uploadProcessedVideo(
-    fileBuffer: Buffer,
-    contentType: string,
-    jobId: string,
-    variationIndex: number,
-  ) {
-    const fileName = `variation_${variationIndex}.mp4`;
-    const folder = `generate/${jobId}`;
-
-    const s3Url = await this.awsStorage.uploadFile(
-      fileBuffer,
-      fileName,
-      contentType,
-      folder,
-    );
-
-    await this.galleryService.upsertVideoToJob(jobId, variationIndex, s3Url, fileName);
-
-    this.logger.log(`[${jobId}] Video variation ${variationIndex} uploaded by client`);
-
-    return { url: s3Url };
   }
 
   async processVideoVariations(images: string[], productName: string, prompts: string[], script: string, jobId: string, targetCount: number, voiceGender: string, userId: number) {
@@ -185,7 +165,7 @@ export class GenerateAiService implements OnModuleInit {
         throw new Error(`Failed to generate all video clips. Got ${successVideos.length}/${promptCount}`);
       }
 
-      // STEP 4: Upload raw clips to S3 (20-60%)
+      // STEP 4: Upload raw clips to S3 (20-40%)
       this.logProgress(jobId, `Uploading ${successVideos.length} raw clips to S3...`, 20);
 
       const clipUrls: string[] = [];
@@ -195,7 +175,7 @@ export class GenerateAiService implements OnModuleInit {
         const vid = successVideos[i];
         const clipFileName = `clip_${vid.index}.mp4`;
 
-        const uploadProgress = 20 + Math.floor(((i + 1) / totalClips) * 40);
+        const uploadProgress = 20 + Math.floor(((i + 1) / totalClips) * 20);
         this.logProgress(jobId, `Uploading clip ${i + 1}/${totalClips} to S3...`, uploadProgress);
 
         const clipBuffer = await this.downloadToBuffer(vid.url);
@@ -208,8 +188,8 @@ export class GenerateAiService implements OnModuleInit {
         clipUrls.push(s3ClipUrl);
       }
 
-      // STEP 5: Upload audio to S3 (60-70%)
-      this.logProgress(jobId, "Uploading audio to S3...", 65);
+      // STEP 5: Upload audio to S3 (40-45%)
+      this.logProgress(jobId, "Uploading audio to S3...", 42);
 
       const audioS3Url = await this.awsStorage.uploadFile(
         audioPath,
@@ -218,27 +198,75 @@ export class GenerateAiService implements OnModuleInit {
         `assets/${jobId}`,
       );
 
-      // STEP 6: Generate unique shuffles (70-80%)
-      this.logProgress(jobId, `Creating ${targetCount} unique variation orders...`, 75);
+      // STEP 6: Generate unique shuffles (45-50%)
+      this.logProgress(jobId, `Creating ${targetCount} unique variation orders...`, 47);
 
       const uniqueOrders = this.videoUtilsHelper.generateUniqueShuffles(promptCount, targetCount);
 
-      // Build per-variation clipUrls (ordered by that variation's shuffle)
-      const variations = uniqueOrders.map((order, idx) => ({
-        variationIndex: idx + 1,
-        clipUrls: order.map(clipIdx => clipUrls[clipIdx]),
-        audioUrl: audioS3Url,
-      }));
+      // STEP 7: Compose each variation via fal.ai ffmpeg (50-90%)
+      this.logProgress(jobId, `Composing ${uniqueOrders.length} video variations via fal.ai...`, 50);
+
+      const videos: Array<{ variationIndex: number; videoUrl: string; thumbnailUrl: string }> = [];
+      let firstThumbnailUrl = '';
+
+      for (let i = 0; i < uniqueOrders.length; i++) {
+        const order = uniqueOrders[i];
+        const shuffledClipUrls = order.map(clipIdx => clipUrls[clipIdx]);
+
+        const composeProgress = 50 + Math.floor(((i + 1) / uniqueOrders.length) * 35);
+        this.logProgress(jobId, `Composing variation ${i + 1}/${uniqueOrders.length}...`, composeProgress);
+
+        const composed = await this.falCompose.composeVideo(shuffledClipUrls, audioS3Url);
+
+        // Re-upload composed video to S3
+        const videoBuffer = await this.downloadToBuffer(composed.videoUrl);
+        const variationFileName = `variation_${i + 1}.mp4`;
+        const s3VideoUrl = await this.awsStorage.uploadFile(
+          videoBuffer,
+          variationFileName,
+          'video/mp4',
+          `results/${jobId}`,
+        );
+
+        // Save to gallery
+        await this.galleryService.upsertVideoToJob(jobId, i + 1, s3VideoUrl, variationFileName);
+
+        // Re-upload thumbnail from first variation
+        if (i === 0 && composed.thumbnailUrl) {
+          const thumbBuffer = await this.downloadToBuffer(composed.thumbnailUrl);
+          firstThumbnailUrl = await this.awsStorage.uploadFile(
+            thumbBuffer,
+            'thumbnail.jpg',
+            'image/jpeg',
+            `results/${jobId}`,
+          );
+        }
+
+        videos.push({
+          variationIndex: i + 1,
+          videoUrl: s3VideoUrl,
+          thumbnailUrl: firstThumbnailUrl,
+        });
+      }
+
+      // STEP 8: Update job status (90-100%)
+      this.logProgress(jobId, "Finalizing...", 95);
+
+      // Update thumbnail and audio URL on the job
+      await this.galleryService.updateJobStatus(jobId, VideoJobStatus.SUCCESS);
+      if (firstThumbnailUrl) {
+        await this.galleryService.updateJobThumbnail(jobId, firstThumbnailUrl, audioS3Url);
+      }
 
       // Cleanup temp files
       this.cleanup(cleanupFiles);
 
-      this.logProgress(jobId, "Raw assets ready. Awaiting client processing.", 100);
+      this.logProgress(jobId, "All variations composed successfully.", 100);
 
       return {
         jobId,
-        totalVariations: variations.length,
-        variations,
+        totalVariations: videos.length,
+        videos,
       };
 
     } catch (error) {
@@ -250,6 +278,8 @@ export class GenerateAiService implements OnModuleInit {
 
       const msg = error instanceof Error ? error.message : JSON.stringify(error);
       this.logger.error(`[${jobId}] ERROR: ${msg}`);
+
+      await this.galleryService.updateJobStatus(jobId, VideoJobStatus.FAILED, msg);
 
       this.logProgress(jobId, `Error: ${msg}`, 0);
 

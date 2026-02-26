@@ -7,6 +7,7 @@ import { AwsStorageService } from './services/aws-storage.service';
 import { OpenAiScriptService } from './services/openai-script.service';
 import { WavespeedVideoService } from './services/wavespeed-video.service';
 import { GeminiTtsService } from './services/gemini-tts.service';
+import { FalComposeService } from './services/fal-compose.service';
 import { GalleryModule } from 'src/gallery/gallery.module';
 
 @Module({
@@ -19,6 +20,7 @@ import { GalleryModule } from 'src/gallery/gallery.module';
     OpenAiScriptService,
     WavespeedVideoService,
     GeminiTtsService,
+    FalComposeService,
   ],
 })
 export class GenerateAiModule {}

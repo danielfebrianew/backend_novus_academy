@@ -185,6 +185,16 @@ export class GalleryService {
     }
   }
 
+  async updateJobThumbnail(jobId: string, thumbnailUrl: string, audioUrl?: string): Promise<void> {
+    const updateData: Partial<{ thumbnailUrl: string; audioUrl: string }> = { thumbnailUrl };
+    if (audioUrl) updateData.audioUrl = audioUrl;
+
+    const result = await this.videoJobRepository.update({ jobId }, updateData);
+    if (result.affected === 0) {
+      console.warn(`[updateJobThumbnail] Job ${jobId} not found`);
+    }
+  }
+
   async updateJobStatus(jobId: string, status: VideoJobStatus, failMsg?: string): Promise<void> {
     const result = await this.videoJobRepository.update(
       { jobId },
