@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateGenerateProDto {
   @IsString()
@@ -12,4 +12,12 @@ export class CreateGenerateProDto {
   @IsString()
   @IsNotEmpty()
   jobId: string;
+
+  @IsString()
+  @IsOptional()
+  faceCharacter?: string;
+
+  @IsString()
+  @IsOptional()
+  customFaceCharacter?: string;
 }

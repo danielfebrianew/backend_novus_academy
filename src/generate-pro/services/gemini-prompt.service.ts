@@ -2,6 +2,26 @@ import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI } from '@google/genai';
 
+export const FACE_CHARACTER_GENDER: Record<string, 'male' | 'female'> = {
+  remaja_wanita: 'female',
+  remaja_pria: 'male',
+  wanita_casual: 'female',
+  pria_casual: 'male',
+  wanita_hijab: 'female',
+  pria_professional: 'male',
+  wanita_karir: 'female',
+};
+
+const FACE_CHARACTER_MAP: Record<string, string> = {
+  remaja_wanita: 'A young Indonesian teenage girl (16-19 years old) wearing casual daily wear, natural look, friendly expression',
+  remaja_pria: 'A young Indonesian teenage boy (16-19 years old) wearing casual daily wear, natural look, friendly expression',
+  wanita_casual: 'A young Indonesian woman (20-28 years old) wearing casual modern outfit, natural makeup, warm and approachable',
+  pria_casual: 'A young Indonesian man (20-30 years old) wearing casual outfit, clean and neat appearance, friendly expression',
+  wanita_hijab: 'A young Indonesian woman wearing modern hijab style, modest and stylish outfit, warm and confident expression',
+  pria_professional: 'An Indonesian professional man (25-40 years old) wearing office/formal attire, neat and confident',
+  wanita_karir: 'An Indonesian career woman (25-35 years old) wearing professional office attire, confident and elegant',
+};
+
 @Injectable()
 export class GeminiVideoPromptService {
   private readonly logger = new Logger(GeminiVideoPromptService.name);
@@ -10,16 +30,29 @@ export class GeminiVideoPromptService {
   constructor(private configService: ConfigService) {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
     if (!apiKey) throw new Error('GEMINI_API_KEY is missing');
-    
+
     // Inisialisasi menggunakan SDK @google/genai terbaru
     this.ai = new GoogleGenAI({ apiKey });
+  }
+
+  private resolveCharacterDescription(faceCharacter?: string, customFaceCharacter?: string): string | null {
+    if (!faceCharacter) return null;
+    if (faceCharacter === 'custom' && customFaceCharacter) return customFaceCharacter;
+    return FACE_CHARACTER_MAP[faceCharacter] ?? null;
   }
 
   async generateVideoPrompt(
     imageUrl: string,
     productTitle: string,
     productDescription: string,
+    faceCharacter?: string,
+    customFaceCharacter?: string,
   ): Promise<string> {
+    const characterDescription = this.resolveCharacterDescription(faceCharacter, customFaceCharacter);
+    const characterLine = characterDescription
+      ? `- CHARACTER: ${characterDescription}. The person in the video MUST match this character description exactly.`
+      : '- Use the person from the reference image as the character.';
+
     const systemPrompt = `
 CONTEXT:
 You are a professional AI Video Prompt Engineer specializing in text-to-video generation.
@@ -88,6 +121,7 @@ VIDEO SPECIFICATIONS
 - Duration: EXACTLY 15 seconds
 - Audio: Natural Bahasa Indonesia voice.
 - One person only, exact anatomy (2 hands, 5 fingers per hand).
+${characterLine}
 
 ────────────────────
 MOUTH MOVEMENT & TALKING (CRITICAL — MANDATORY)
@@ -113,18 +147,19 @@ WRITE EXACTLY 5 SCENES. Each scene: MAX 1–2 SHORT sentences.
 - Front-facing camera angle, natural room lighting, shallow depth of field.
 
 [2s–6s] Product Introduction
-- Mention product name.
+- Mention product name, be concise.
 - Switch to rear camera. MUST be a STATIC handheld medium shot. NO vertical panning.
 - Person is SPEAKING — mouth visibly moving.
 
 [6s–10s] Product Detail / Visual Feature
-- Mention 1 key feature (e.g., fabric quality).
+- Mention 1 key feature (e.g., fabric quality), be brief.
 - Detail MUST be shown on a safe area (e.g., "focusing on the arm/sleeve", "stretching the sleeve fabric"). 
 - VOICEOVER RULE: Focus on comfort or neat cut. DO NOT say it fits the body well.
 - Person is TALKING to camera — lips and jaw moving naturally.
 
 [10s–13s] Recommendation / CTA
 - Soft recommendation.
+- MUST end with or include the phrase "yuk segera checkout" in the voiceover.
 - Person is SPEAKING to camera — mouth clearly moving with natural expression.
 - Back to front-facing camera.
 

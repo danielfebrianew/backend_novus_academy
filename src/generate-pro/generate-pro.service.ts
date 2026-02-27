@@ -6,7 +6,7 @@ import { VideoJobStatus } from 'src/gallery/entities/video-job.entity';
 import { CreateGenerateProDto } from './dto/create-generate-pro.dto';
 import { AwsStorageService } from './services/aws-storage.service';
 import { KieVideoService } from './services/kie-video.service';
-import { GeminiVideoPromptService } from './services/gemini-prompt.service';
+import { GeminiVideoPromptService, FACE_CHARACTER_GENDER } from './services/gemini-prompt.service';
 
 export class KieCallbackData {
   taskId: string;
@@ -62,6 +62,8 @@ export class GenerateProService {
       imageUrl,
       dto.productTitle,
       dto.productDescription,
+      dto.faceCharacter,
+      dto.customFaceCharacter,
     );
 
     // Step 3: Submit ke Kie.ai (aspect_ratio dan n_frames di-lock)
@@ -78,12 +80,13 @@ export class GenerateProService {
 
     // Step 4: Simpan job metadata ke gallery (pakai taskId sebagai jobId)
     this.logProgress(reqId, 'Saving job metadata...', 35);
+    const voiceGender = (dto.faceCharacter && FACE_CHARACTER_GENDER[dto.faceCharacter]) || 'female';
     await this.galleryService.createJobMetadata(
       userId,
       taskId,
       dto.productTitle,
       videoPrompt,
-      'female',
+      voiceGender,
       1,
       1,
       [videoPrompt],
