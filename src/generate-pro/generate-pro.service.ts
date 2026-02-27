@@ -146,8 +146,8 @@ export class GenerateProService {
   }
 
   async handleProgressCallback(payload: any) {
-    const taskId = payload?.data?.taskId ?? payload?.taskId;
-    const progress = payload?.data?.progress ?? payload?.progress;
+    const taskId = payload?.data?.taskId ?? payload?.taskId ?? payload?.data?.task_id ?? payload?.task_id;
+    const progress = payload?.data?.progress ?? payload?.progress ?? payload?.data?.progress_percent ?? payload?.progress_percent;
 
     if (!taskId) {
       this.logger.warn(`Progress callback missing taskId: ${JSON.stringify(payload)}`);

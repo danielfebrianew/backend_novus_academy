@@ -1,4 +1,4 @@
-import { IsArray, IsNotEmpty, IsString, IsUrl, IsInt, Min, Max, IsOptional, ArrayMinSize, IsNumber, IsIn } from 'class-validator';
+import { IsArray, IsNotEmpty, IsString, IsUrl, IsInt, Min, Max, IsOptional, ArrayMinSize, IsNumber, IsIn, isNotEmpty } from 'class-validator';
 
 export class GenerateTextDto {
   @IsNotEmpty()
@@ -13,6 +13,9 @@ export class GenerateTextDto {
 
   @IsNotEmpty()
   productName: string;
+
+  @IsNotEmpty()
+  productDescription: string;
 }
 
 export class GenerateVideoDto {

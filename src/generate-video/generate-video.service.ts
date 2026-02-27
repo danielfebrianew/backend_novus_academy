@@ -77,8 +77,8 @@ export class GenerateAiService implements OnModuleInit {
     return { imageUrls: urls };
   }
 
-  async generateText(imageUrl: string, count: number, product: string) {
-    return await this.openaiScript.analyzeImageAndCreateScript(imageUrl, count, product);
+  async generateText(imageUrl: string, count: number, productName: string, productDescription: string) {
+    return await this.openaiScript.analyzeImageAndCreateScript(imageUrl, count, productName, productDescription);
   }
 
   async processVideoVariations(images: string[], productName: string, prompts: string[], script: string, jobId: string, targetCount: number, voiceGender: string, userId: number) {

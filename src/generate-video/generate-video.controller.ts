@@ -53,7 +53,7 @@ export class GenerateAiController {
   @Post('text')
   @ResponseMessage('Generate Text Berhasil')
   async generateText(@Body() dto: GenerateTextDto, @Req() req: any) {
-    const result = await this.generateAiService.generateText(dto.imageUrl, dto.promptCount, dto.productName);
+    const result = await this.generateAiService.generateText(dto.imageUrl, dto.promptCount, dto.productName, dto.productDescription);
     return result;
   }
 

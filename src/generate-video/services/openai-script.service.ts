@@ -13,7 +13,7 @@ export class OpenAiScriptService {
     this.openai = new OpenAI({ apiKey });
   }
 
-  async analyzeImageAndCreateScript(imageUrl: string, count: number, productName: string) {
+  async analyzeImageAndCreateScript(imageUrl: string, count: number, productName: string, productDescription: string) {
     let durationPrompt = "Target ≈20 seconds";
 
     switch (count) {
@@ -32,29 +32,18 @@ export class OpenAiScriptService {
 
     const promptText = `
       Analyze this image thoroughly.
-      Name of the product is "${productName}".
+      Product name: "${productName}".
+      Product description: "${productDescription}".
       
-      Task: Create a JSON output containing script, prompts, and CAPTION COMPONENTS.
+      Task: Create a JSON output containing voiceover script and video prompts.
       
-      1. "voiceover": Naskah voiceover PADAT & JELAS (Bahasa Indonesia). Durasi: ${durationPrompt}. Gaya: Storytelling/Review jujur ke sahabat. Akhiri dengan ajakan cek keranjang kuning.
-      
-      2. "captionComponents": Buatkan komponen caption dalam Bahasa Indonesia (Singkat & Menarik) untuk dirakit secara acak nanti:
-         - "hooks": 5 variasi headline clickbait/pertanyaan (Max 1 kalimat).
-         - "bodies": 5 variasi body text menjelaskan keunggulan/manfaat produk "${productName}" dengan angle berbeda.
-         - "ctas": 5 variasi kalimat ajakan pendek (Contoh: "Cek keranjang kuning!", "Buruan checkout!").
-         - "hashtags": 4 set hashtags (tiap set isi 3-4 tag relevan).
+      1. "voiceover": Naskah voiceover PADAT & JELAS (Bahasa Indonesia). Durasi: ${durationPrompt}. Gaya: Storytelling/Review jujur ke sahabat. Gunakan informasi dari nama dan deskripsi produk untuk menyusun naskah yang relevan. Akhiri dengan ajakan cek keranjang kuning.
 
-      3. "videoPrompts": Array of ${count} distinct English visual prompts. Each must use different camera angles (Close Up, Pan, Zoom, etc). Focus on aesthetics.
+      2. "videoPrompts": Array of ${count} distinct English visual prompts. Each must use different camera angles (Close Up, Pan, Zoom, etc). Focus on aesthetics.
 
       FORMAT JSON ONLY:
       {
         "voiceover": "...",
-        "captionComponents": {
-            "hooks": ["...", ...],
-            "bodies": ["...", ...],
-            "ctas": ["...", ...],
-            "hashtags": ["...", ...]
-        },
         "videoPrompts": [...]
       }
     `;
@@ -82,7 +71,6 @@ export class OpenAiScriptService {
       return {
         voiceover: parsedData.voiceover,
         videoPrompts: parsedData.videoPrompts,
-        captionComponents: parsedData.captionComponents 
       };
 
     } catch (error) {
