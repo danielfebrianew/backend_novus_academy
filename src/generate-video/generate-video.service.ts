@@ -120,6 +120,7 @@ export class GenerateAiService implements OnModuleInit {
         prompts,
         images,
         images[0],
+        false
       );
       this.logger.log(`[${jobId}] Job metadata saved to database`);
     } catch (dbError) {
