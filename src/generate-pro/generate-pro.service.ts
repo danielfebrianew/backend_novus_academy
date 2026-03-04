@@ -38,68 +38,82 @@ export class GenerateProService {
     private readonly galleryService: GalleryService,
     private readonly configService: ConfigService,
     private readonly eventEmitter: EventEmitter2,
-  ) {}
+  ) { }
 
   async submitTask(dto: CreateGenerateProDto, file: Express.Multer.File, userId: number) {
     const reqId = dto.jobId;
-    const appBaseUrl = this.configService.get<string>('APP_BASE_URL');
-    const callBackUrl = `${appBaseUrl}/generate-pro/callback`;
-    const progressCallBackUrl = `${appBaseUrl}/generate-pro/progress-callback`;
 
-    // Step 1: Upload image ke S3
-    this.logProgress(reqId, 'Uploading product image...', 5);
-    const ext = file.mimetype.split('/')[1];
-    const imageUrl = await this.awsStorageService.uploadFile(
-      file.buffer,
-      `${reqId}-${Date.now()}.${ext}`,
-      file.mimetype,
-      'generate-pro',
-    );
+    try {
+      const appBaseUrl = this.configService.get<string>('APP_BASE_URL');
+      const callBackUrl = `${appBaseUrl}/generate-pro/callback`;
+      const progressCallBackUrl = `${appBaseUrl}/generate-pro/progress-callback`;
 
-    // Step 2: Generate structured Sora prompt via Gemini Vision
-    this.logProgress(reqId, 'Generating video prompt...', 15);
-    const videoPrompt = await this.geminiVideoPromptService.generateVideoPrompt(
-      imageUrl,
-      dto.productTitle,
-      dto.productDescription,
-      dto.faceCharacter,
-      dto.customFaceCharacter,
-    );
+      // Step 1: Upload image ke S3
+      this.logProgress(reqId, 'Uploading product image...', 5);
+      const ext = file.mimetype.split('/')[1];
+      const imageUrl = await this.awsStorageService.uploadFile(
+        file.buffer,
+        `${reqId}-${Date.now()}.${ext}`,
+        file.mimetype,
+        'generate-pro',
+      );
 
-    // Step 3: Submit ke Kie.ai (aspect_ratio dan n_frames di-lock)
-    this.logProgress(reqId, 'Submitting task to Kie.ai...', 30);
-    const taskId = await this.kieVideoService.createTask(
-      videoPrompt,
-      imageUrl,
-      'portrait',
-      '15',
-      callBackUrl,
-      progressCallBackUrl,
-      reqId,
-    );
+      // Step 2: Generate structured Sora prompt via Gemini Vision
+      this.logProgress(reqId, 'Generating video prompt...', 15);
+      const videoPrompt = await this.geminiVideoPromptService.generateVideoPrompt(
+        imageUrl,
+        dto.productTitle,
+        dto.productDescription,
+        dto.faceCharacter,
+        dto.customFaceCharacter,
+      );
 
-    // Step 4: Simpan job metadata ke gallery (pakai taskId sebagai jobId)
-    this.logProgress(reqId, 'Saving job metadata...', 35);
-    const voiceGender = (dto.faceCharacter && FACE_CHARACTER_GENDER[dto.faceCharacter]) || 'female';
-    await this.galleryService.createJobMetadata(
-      userId,
-      taskId,
-      dto.productTitle,
-      videoPrompt,
-      voiceGender,
-      1,
-      1,
-      [videoPrompt],
-      [imageUrl],
-      imageUrl,
-      true,
-    );
+      // Step 3: Submit ke Kie.ai (aspect_ratio dan n_frames di-lock)
+      this.logProgress(reqId, 'Submitting task to Kie.ai...', 30);
+      const taskId = await this.kieVideoService.createTask(
+        videoPrompt,
+        imageUrl,
+        'portrait',
+        '15',
+        callBackUrl,
+        progressCallBackUrl,
+        reqId,
+      );
 
-    // Update status ke processing (taskId = jobId di database)
-    await this.galleryService.updateJobStatus(taskId, VideoJobStatus.PROCESSING);
+      // Step 4: Simpan job metadata ke gallery (pakai taskId sebagai jobId)
+      this.logProgress(reqId, 'Saving job metadata...', 35);
+      const voiceGender = (dto.faceCharacter && FACE_CHARACTER_GENDER[dto.faceCharacter]) || 'female';
+      await this.galleryService.createJobMetadata(
+        userId,
+        taskId,
+        dto.productTitle,
+        videoPrompt,
+        voiceGender,
+        1,
+        1,
+        [videoPrompt],
+        [imageUrl],
+        imageUrl,
+        true,
+      );
 
-    this.logProgress(reqId, 'Task submitted to Kie.ai', 40);
-    return { jobId: reqId, taskId, imageUrl, generatedPrompt: videoPrompt };
+      // Update status ke processing (taskId = jobId di database)
+      await this.galleryService.updateJobStatus(taskId, VideoJobStatus.PROCESSING);
+
+      this.logProgress(reqId, 'Task submitted to Kie.ai', 40);
+      return { jobId: reqId, taskId, imageUrl, generatedPrompt: videoPrompt };
+    } catch (error) {
+      this.logger.error(`[${reqId}] Task submission failed: ${error.message}`);
+
+      this.eventEmitter.emit('pro.job.progress', {
+        jobId: reqId,
+        message: 'failed',
+        progress: -1,
+        failMsg: error.message,
+      });
+
+      throw error;
+    }
   }
 
   async handleCallback(payload: KieCallbackPayload) {

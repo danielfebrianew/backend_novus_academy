@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 
@@ -48,7 +48,7 @@ export class KieVideoService {
       const { code, data, message, msg } = response.data;
 
       if (code !== 200) {
-        throw new Error(`Kie.ai returned error: ${message || msg || JSON.stringify(response.data)}`);
+        throw new InternalServerErrorException(`Kie.ai returned error: ${message || msg || JSON.stringify(response.data)}`);
       }
 
       this.logger.log(`[${reqId}] Kie.ai Task ID: ${data.taskId}`);
@@ -67,7 +67,7 @@ export class KieVideoService {
         : (error as Error).message;
 
       this.logger.error(`[${reqId}] Kie.ai Error: ${msg}`);
-      throw new Error(msg);
+      throw new InternalServerErrorException(msg);
     }
   }
 
@@ -90,7 +90,7 @@ export class KieVideoService {
       const { code, data, message, msg } = response.data;
 
       if (code !== 200) {
-        throw new Error(`Kie.ai query error: ${message || msg}`);
+        throw new InternalServerErrorException(`Kie.ai query error: ${message || msg}`);
       }
 
       return data;
@@ -100,7 +100,7 @@ export class KieVideoService {
         : (error as Error).message;
 
       this.logger.error(`[${taskId}] Query error: ${msg}`);
-      throw new Error(msg);
+      throw new InternalServerErrorException(msg);
     }
   }
 }

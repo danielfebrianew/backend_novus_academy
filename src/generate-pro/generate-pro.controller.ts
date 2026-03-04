@@ -104,6 +104,7 @@ export class GenerateProController {
 
     return {
       jobId: job.jobId,
+      taskId: job.jobId,
       productName: job.productName,
       thumbnailUrl: job.thumbnailUrl,
       status: job.status,
