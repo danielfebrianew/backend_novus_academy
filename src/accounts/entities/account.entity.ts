@@ -1,36 +1,35 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 import { Scheduler } from '../../scheduler/entities/scheduler.entity';
 
-@Entity('list_accounts') // Nama tabel di database
+@Entity('list_accounts')
 export class Account {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn({ name: 'ID' })
   id: number;
 
-  @Column({ name: 'user_id', nullable: true }) // ID user pemilik dashboard (relasi ke Users table kamu)
+  @Column({ name: 'USER_ID', nullable: true })
   userId: number;
 
-  @Column({ unique: true })
+  @Column({ name: 'USERNAME', unique: true })
   username: string;
 
-  @Column({ nullable: true })
+  @Column({ name: 'EMAIL', nullable: true })
   email: string;
 
-  // Select: false agar password & cookie tidak ikut terkirim saat GET (Security)
-  @Column({ select: false, nullable: true })
+  @Column({ name: 'PASSWORD', select: false, nullable: true })
   password: string;
 
-  @Column({ default: 'ACTIVE' }) // ACTIVE, SUSPENDED, EXPIRED
+  @Column({ name: 'STATUS', default: 'ACTIVE' })
   status: string;
 
-  @Column({ type: 'text', select: false, nullable: true })
+  @Column({ name: 'COOKIE', type: 'text', select: false, nullable: true })
   cookie: string;
 
   @OneToMany(() => Scheduler, (scheduler) => scheduler.account)
   schedulers: Scheduler[];
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'CREATED_AT' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: 'UPDATED_AT' })
   updatedAt: Date;
 }

@@ -86,13 +86,13 @@ export class GenerateAiService implements OnModuleInit {
     const promptCount = prompts.length;
 
     // --- LOGIC RANDOM VOICE PICKER ---
-    let voiceName = 'Achernar';
+    let voiceName = 'Zephyr';
 
     if (voiceGender === 'male') {
-      const maleVoices = ['Alnilam', 'Achird', 'Zubenelgenubi'];
+      const maleVoices = ['Zubenelgenubi', 'Sadachbia', 'Sadaltager'];
       voiceName = maleVoices[Math.floor(Math.random() * maleVoices.length)];
     } else {
-      const femaleVoices = ['Achernar', 'Zephyr', 'Sulafat'];
+      const femaleVoices = ['Zephyr', 'Vindemiatrix', 'Sulafat'];
       voiceName = femaleVoices[Math.floor(Math.random() * femaleVoices.length)];
     }
 

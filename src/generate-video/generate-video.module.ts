@@ -9,9 +9,10 @@ import { WavespeedVideoService } from './services/wavespeed-video.service';
 import { GeminiTtsService } from './services/gemini-tts.service';
 import { FalComposeService } from './services/fal-compose.service';
 import { GalleryModule } from 'src/gallery/gallery.module';
+import { UsersModule } from 'src/users/users.module';
 
 @Module({
-  imports: [ConfigModule, GalleryModule],
+  imports: [ConfigModule, GalleryModule, UsersModule],
   controllers: [GenerateAiController],
   providers: [
     GenerateAiService,

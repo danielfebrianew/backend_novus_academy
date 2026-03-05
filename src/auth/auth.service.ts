@@ -74,6 +74,7 @@ export class AuthService {
       user: {
         name: user.name,
         email: user.email,
+        credits: user.credits,
       },
     };
   }
@@ -123,6 +124,7 @@ export class AuthService {
         user: {
           name: userDto.name,
           email: userDto.email,
+          credits: userDto.credits,
         },
       };
     } catch (error) {

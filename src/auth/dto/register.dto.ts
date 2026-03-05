@@ -1,5 +1,4 @@
-import { Transform } from 'class-transformer';
-import { IsEmail, IsNotEmpty, IsString, MinLength, IsOptional, IsPhoneNumber } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @IsString()
@@ -13,15 +12,4 @@ export class RegisterDto {
   @IsString()
   @MinLength(6, { message: 'Password minimal 6 karakter' })
   password: string;
-
-  @IsString()
-  @IsOptional()
-  @Transform(({ value }) => value === '' ? null : value)
-  @IsPhoneNumber('ID', { message: 'Format nomor HP Indonesia tidak valid' })
-  phoneNumber?: string;
-
-  @IsString()
-  @IsOptional()
-  @Transform(({ value }) => value === '' ? null : value)
-  referralCode?: string;
 } 

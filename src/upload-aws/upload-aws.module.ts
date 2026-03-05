@@ -4,6 +4,7 @@ import { UploadAwsController } from './upload-aws.controller';
 
 @Module({
   providers: [UploadAwsService],
-  controllers: [UploadAwsController]
+  controllers: [UploadAwsController],
+  exports: [UploadAwsService]
 })
 export class UploadAwsModule {}

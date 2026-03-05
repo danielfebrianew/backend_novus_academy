@@ -10,58 +10,59 @@ export enum VideoJobStatus {
 
 @Entity('video_jobs')
 export class VideoJob {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn('uuid', { name: 'ID' })
   id: string;
 
   @Index()
-  @Column({ name: 'user_id' })
+  @Column({ name: 'USER_ID' })
   userId: number;
 
   @Index({ unique: true })
-  @Column({ name: 'job_id', length: 50 })
+  @Column({ name: 'JOB_ID', length: 50 })
   jobId: string;
 
-  @Column({ name: 'product_name' })
+  @Column({ name: 'PRODUCT_NAME' })
   productName: string;
 
-  @Column({ type: 'text' })
+  @Column({ name: 'SCRIPT', type: 'text' })
   script: string;
 
-  @Column({ name: 'voice_gender', length: 10, default: '-' })
+  @Column({ name: 'VOICE_GENDER', length: 10, default: '-' })
   voiceGender: string;
 
-  @Column({ name: 'prompt_count' })
+  @Column({ name: 'PROMPT_COUNT' })
   promptCount: number;
 
-  @Column({ name: 'target_count' })
+  @Column({ name: 'TARGET_COUNT' })
   targetCount: number;
 
-  @Column({ type: 'json' })
+  @Column({ name: 'PROMPTS', type: 'json' })
   prompts: string[];
 
-  @Column({ type: 'json', name: 'input_images' })
+  @Column({ name: 'INPUT_IMAGES', type: 'json' })
   inputImages: string[];
 
-  @Column({ name: 'thumbnail_url', length: 500, nullable: true })
+  @Column({ name: 'THUMBNAIL_URL', length: 500, nullable: true })
   thumbnailUrl: string;
 
   @Column({
+    name: 'STATUS',
     type: 'enum',
     enum: VideoJobStatus,
     default: VideoJobStatus.PENDING,
   })
   status: VideoJobStatus;
 
-  @Column({ name: 'is_pro', default: false })
+  @Column({ name: 'IS_PRO', default: false })
   isPro: boolean;
 
-  @Column({ name: 'audio_url', length: 500, nullable: true })
+  @Column({ name: 'AUDIO_URL', length: 500, nullable: true })
   audioUrl: string;
 
-  @Column({ name: 'fail_msg', type: 'text', nullable: true })
+  @Column({ name: 'FAIL_MSG', type: 'text', nullable: true })
   failMsg: string | null;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'CREATED_AT' })
   createdAt: Date;
 
   @OneToMany(() => VideoResult, (result) => result.videoJob, { cascade: true })

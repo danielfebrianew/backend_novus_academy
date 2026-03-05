@@ -6,6 +6,7 @@ import { VideoJobStatus } from 'src/gallery/entities/video-job.entity';
 import { CreateGenerateProDto } from './dto/create-generate-pro.dto';
 import { AwsStorageService } from './services/aws-storage.service';
 import { KieVideoService } from './services/kie-video.service';
+import { UsersService } from 'src/users/users.service';
 import { GeminiVideoPromptService, FACE_CHARACTER_GENDER } from './services/gemini-prompt.service';
 
 export class KieCallbackData {
@@ -38,6 +39,7 @@ export class GenerateProService {
     private readonly galleryService: GalleryService,
     private readonly configService: ConfigService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly usersService: UsersService,
   ) { }
 
   async submitTask(dto: CreateGenerateProDto, file: Express.Multer.File, userId: number) {
@@ -159,6 +161,17 @@ export class GenerateProService {
         progress: -1,
         failMsg: data.failMsg,
       });
+
+      // Refund 20 credits to user
+      try {
+        const job = await this.galleryService.findJobByJobId(jobId);
+        if (job) {
+          await this.usersService.addCredits(job.userId, 20);
+          this.logger.log(`[${jobId}] Refunded 20 credits to user ${job.userId}`);
+        }
+      } catch (refundError) {
+        this.logger.error(`[${jobId}] Failed to refund credits: ${refundError.message}`);
+      }
     }
   }
 
@@ -232,6 +245,14 @@ export class GenerateProService {
       await this.galleryService.updateJobStatus(jobId, VideoJobStatus.FAILED, failMsg ?? undefined);
       this.logger.log(`[${jobId}] Synced status to failed`);
       this.eventEmitter.emit('pro.job.progress', { jobId, message: 'failed', progress: -1, failMsg });
+
+      // Refund 20 credits to user
+      try {
+        await this.usersService.addCredits(job.userId, 20);
+        this.logger.log(`[${jobId}] Sync: Refunded 20 credits to user ${job.userId}`);
+      } catch (refundError) {
+        this.logger.error(`[${jobId}] Sync: Failed to refund credits: ${refundError.message}`);
+      }
     }
   }
 

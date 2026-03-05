@@ -2,9 +2,14 @@ export class UserDto {
   id: number;
   name: string;
   email: string;
-  phoneNumber?: string;
-  referralCode?: string;
   role: string;
+  credits: number;
+  userLevelId?: number;
+  paketId?: number;
+  userWallet?: number;
+  userBonus?: number;
+  userPoint?: number;
+  userStatus?: number;
   createdAt: Date;
   updatedAt: Date;
 

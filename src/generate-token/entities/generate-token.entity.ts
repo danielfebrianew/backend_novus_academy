@@ -7,18 +7,18 @@ import {
 
 @Entity('access_tokens')
 export class AccessToken {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn('uuid', { name: 'ID' })
   id: string;
 
-  @Column({ unique: true })
+  @Column({ name: 'TOKEN', unique: true })
   token: string;
 
-  @Column({ default: false })
+  @Column({ name: 'IS_USED', default: false })
   isUsed: boolean;
 
-  @Column({ type: 'timestamp' })
+  @Column({ name: 'EXPIRES_AT', type: 'timestamp' })
   expiresAt: Date;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'CREATED_AT' })
   createdAt: Date;
 }

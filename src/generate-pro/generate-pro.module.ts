@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { GalleryModule } from 'src/gallery/gallery.module';
+import { UsersModule } from 'src/users/users.module';
 
 import { GenerateProController } from './generate-pro.controller';
 import { GenerateProService } from './generate-pro.service';
@@ -9,7 +10,7 @@ import { KieVideoService } from './services/kie-video.service';
 import { GeminiVideoPromptService } from './services/gemini-prompt.service';
 
 @Module({
-  imports: [ConfigModule, GalleryModule],
+  imports: [ConfigModule, GalleryModule, UsersModule],
   controllers: [GenerateProController],
   providers: [GenerateProService, KieVideoService, GeminiVideoPromptService, AwsStorageService],
 })

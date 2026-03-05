@@ -3,32 +3,32 @@ import { VideoJob } from './video-job.entity';
 
 @Entity('video_results')
 export class VideoResult {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn('uuid', { name: 'ID' })
   id: string;
 
   @Index()
-  @Column({ name: 'video_job_id' })
+  @Column({ name: 'VIDEO_JOB_ID' })
   videoJobId: string;
 
   @ManyToOne(() => VideoJob, (job) => job.videos, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'video_job_id' })
+  @JoinColumn({ name: 'VIDEO_JOB_ID' })
   videoJob: VideoJob;
 
-  @Column({ name: 'variation_number' })
+  @Column({ name: 'VARIATION_NUMBER' })
   variationNumber: number;
 
-  @Column({ name: 'video_url', length: 500 })
+  @Column({ name: 'VIDEO_URL', length: 500 })
   videoUrl: string;
 
-  @Column({ name: 'file_name' })
+  @Column({ name: 'FILE_NAME' })
   fileName: string;
 
-  @Column({ name: 'is_scheduled', default: false })
+  @Column({ name: 'IS_SCHEDULED', default: false })
   isScheduled: boolean;
 
-  @Column({ name: 'scheduled_at', type: 'timestamp', nullable: true })
+  @Column({ name: 'SCHEDULED_AT', type: 'timestamp', nullable: true })
   scheduledAt: Date;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'CREATED_AT' })
   createdAt: Date;
 }

@@ -9,31 +9,29 @@ export enum ActionType {
 
 @Entity('histories')
 export class History {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn('uuid', { name: 'ID' })
   id: string;
 
   @Column({
+    name: 'ACTION_TYPE',
     type: 'enum',
     enum: ActionType,
   })
   actionType: ActionType;
 
-  // Menyimpan Input (Body Request)
-  @Column({ type: 'json', nullable: true })
+  @Column({ name: 'INPUT_PAYLOAD', type: 'json', nullable: true })
   inputPayload: any;
 
-  // Menyimpan Output (Response Data)
-  @Column({ type: 'json', nullable: true })
+  @Column({ name: 'OUTPUT_RESULT', type: 'json', nullable: true })
   outputResult: any;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'CREATED_AT' })
   createdAt: Date;
 
-  // Relasi ke User
   @ManyToOne(() => User, (user) => user.histories, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' })
+  @JoinColumn({ name: 'USER_ID' })
   user: User;
 
-  @Column()
-  userId: number; // Atau string jika user ID mu UUID
+  @Column({ name: 'USER_ID' })
+  userId: number;
 }

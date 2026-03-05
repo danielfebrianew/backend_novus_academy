@@ -2,6 +2,12 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateNotifications1708300001000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
+    const tables = await queryRunner.query(`
+      SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'notifications'
+    `);
+    if (tables.length > 0) return;
+
     await queryRunner.query(`
       CREATE TABLE notifications (
         id CHAR(36) NOT NULL DEFAULT (UUID()),

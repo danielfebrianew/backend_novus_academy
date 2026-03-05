@@ -7,28 +7,28 @@ export enum NotificationType {
 
 @Entity('notifications')
 export class Notification {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn('uuid', { name: 'ID' })
   id: string;
 
   @Index()
-  @Column({ name: 'user_id' })
+  @Column({ name: 'USER_ID' })
   userId: number;
 
-  @Column({ type: 'enum', enum: NotificationType })
+  @Column({ name: 'TYPE', type: 'enum', enum: NotificationType })
   type: NotificationType;
 
-  @Column({ length: 255 })
+  @Column({ name: 'TITLE', length: 255 })
   title: string;
 
-  @Column({ type: 'text' })
+  @Column({ name: 'MESSAGE', type: 'text' })
   message: string;
 
-  @Column({ name: 'job_id', type: 'varchar', length: 100, nullable: true })
+  @Column({ name: 'JOB_ID', type: 'varchar', length: 100, nullable: true })
   jobId: string | null;
 
-  @Column({ name: 'is_read', default: false })
+  @Column({ name: 'IS_READ', default: false })
   isRead: boolean;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'CREATED_AT' })
   createdAt: Date;
 }

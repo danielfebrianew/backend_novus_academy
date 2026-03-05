@@ -21,6 +21,8 @@ import { LoggerModule } from './logger/logger.module';
 import { LoggingInterceptor } from './logger/interceptors/logging.interceptor';
 import { GenerateProModule } from './generate-pro/generate-pro.module';
 import { GenerateTokenModule } from './generate-token/generate-token.module';
+import { DepositsModule } from './deposits/deposits.module';
+import { HistorySaldoModule } from './history-saldo/history-saldo.module';
 
 
 @Module({
@@ -69,8 +71,8 @@ import { GenerateTokenModule } from './generate-token/generate-token.module';
           database: configService.get<string>('DB_NAME'),
           timezone: 'Z',
           autoLoadEntities: true,
-          synchronize: true,
-          migrationsRun: false,
+          synchronize: false,
+          migrationsRun: true,
           migrations: [__dirname + '/migrations/*{.ts,.js}'],
           logging: !isProduction,
           extra: {
@@ -97,7 +99,8 @@ import { GenerateTokenModule } from './generate-token/generate-token.module';
     GalleryModule,
     GenerateProModule,
     GenerateTokenModule,
-
+    DepositsModule,
+    HistorySaldoModule,
   ],
   controllers: [],
   providers: [

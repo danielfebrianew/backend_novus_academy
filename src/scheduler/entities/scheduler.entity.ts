@@ -3,49 +3,50 @@ import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateCol
 
 export enum PostStatus {
   PENDING = 'PENDING',
-  PROCESSING = 'PROCESSING', // Sedang diambil bot
-  DONE = 'DONE',             // Sukses dipost
+  PROCESSING = 'PROCESSING',
+  DONE = 'DONE',
   FAILED = 'FAILED',
 }
 
 @Entity('scheduled_posts')
 export class Scheduler {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn({ name: 'ID' })
   id: number;
 
-  @Column({ name: 'account_id', nullable: true })
+  @Column({ name: 'ACCOUNT_ID', nullable: true })
   accountId: number;
 
   @ManyToOne(() => Account, (account) => account.schedulers, { nullable: false, onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'account_id' })
+  @JoinColumn({ name: 'ACCOUNT_ID' })
   account: Account;
 
   @Index()
-  @Column({ type: 'timestamp' })
+  @Column({ name: 'SCHEDULED_TIME', type: 'timestamp' })
   scheduledTime: Date;
 
-  @Column()
+  @Column({ name: 'USERNAME' })
   username: string;
 
-  @Column()
+  @Column({ name: 'VIDEO_URL' })
   videoUrl: string;
 
-  @Column('text')
-  content: string; // Caption + Hashtags
+  @Column({ name: 'CONTENT', type: 'text' })
+  content: string;
 
-  @Column({ nullable: true })
+  @Column({ name: 'PRODUCT_ID', nullable: true })
   productId: string;
 
   @Column({
+    name: 'STATUS_POST',
     type: 'enum',
     enum: PostStatus,
     default: PostStatus.PENDING,
   })
   statusPost: PostStatus;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'CREATED_AT' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'UPDATED_AT' })
   updatedAt: Date;
 }

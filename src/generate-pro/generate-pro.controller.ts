@@ -23,6 +23,7 @@ import { ResponseInterceptor } from 'src/common/interceptors/response.intercepto
 import { CreateGenerateProDto } from './dto/create-generate-pro.dto';
 import { GenerateProService, KieCallbackPayload } from './generate-pro.service';
 import { GalleryService } from 'src/gallery/gallery.service';
+import { UsersService } from 'src/users/users.service';
 
 @Controller('generate-pro')
 @UseInterceptors(ResponseInterceptor)
@@ -30,8 +31,9 @@ export class GenerateProController {
   constructor(
     private readonly generateProService: GenerateProService,
     private readonly galleryService: GalleryService,
+    private readonly usersService: UsersService,
     private readonly eventEmitter: EventEmitter2,
-  ) {}
+  ) { }
 
   @SkipThrottle()
   @Sse('progress/:jobId')
@@ -45,7 +47,7 @@ export class GenerateProController {
           progress: payload.progress ?? null,
           status: payload.progress === 100 ? 'success'
             : payload.progress === -1 ? 'failed'
-            : 'processing',
+              : 'processing',
           resultUrls: payload.resultUrls ?? null,
           failMsg: payload.failMsg ?? null,
         },
@@ -68,7 +70,13 @@ export class GenerateProController {
       throw new BadRequestException('Hanya boleh upload gambar (jpg, jpeg, png, webp)');
     }
     const userId = req.user.userId;
-    return this.generateProService.submitTask(dto, file, userId);
+    await this.usersService.deductCredits(userId, 20);
+    try {
+      return await this.generateProService.submitTask(dto, file, userId);
+    } catch (error) {
+      await this.usersService.addCredits(userId, 20); // refund 20 credits
+      throw error;
+    }
   }
 
   @Post('callback')

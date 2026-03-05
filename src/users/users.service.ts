@@ -197,15 +197,62 @@ export class UsersService {
       .execute();
   }
 
+  // ===== CREDIT METHODS =====
+
+  async getCredits(userId: number): Promise<number> {
+    const user = await this.usersRepository.findOneBy({ id: userId });
+    if (!user) throw new NotFoundException(`User with ID ${userId} not found`);
+    return user.credits;
+  }
+
+  async deductCredits(userId: number, amount: number): Promise<number> {
+    if (amount <= 0) throw new BadRequestException('Amount must be positive');
+
+    const result = await this.usersRepository
+      .createQueryBuilder()
+      .update(User)
+      .set({ credits: () => 'credits - :amount' })
+      .where('id = :id AND credits >= :amount', { id: userId, amount })
+      .execute();
+
+    if (result.affected === 0) {
+      throw new BadRequestException('Credit tidak cukup');
+    }
+
+    return this.getCredits(userId);
+  }
+
+  async addCredits(userId: number, amount: number): Promise<number> {
+    if (amount <= 0) throw new BadRequestException('Amount must be positive');
+
+    const result = await this.usersRepository
+      .createQueryBuilder()
+      .update(User)
+      .set({ credits: () => 'credits + :amount' })
+      .where('id = :id', { id: userId, amount })
+      .execute();
+
+    if (result.affected === 0) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    return this.getCredits(userId);
+  }
+
   // --- MAPPER ---
   private toResponseDto(user: User): UserDto {
     return new UserDto({
       id: user.id,
       name: user.name,
       email: user.email,
-      phoneNumber: user.phoneNumber,
-      referralCode: user.referralCode,
       role: user.role,
+      credits: user.credits,
+      userLevelId: user.userLevelId,
+      paketId: user.paketId,
+      userWallet: user.userWallet,
+      userBonus: user.userBonus,
+      userPoint: user.userPoint,
+      userStatus: user.userStatus,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     });

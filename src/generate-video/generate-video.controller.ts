@@ -16,6 +16,7 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { GenerateAiService } from './generate-video.service';
 import { GenerateTextDto, GenerateVideoDto } from './dto/generate-video.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { UsersService } from 'src/users/users.service';
 import { Observable, fromEvent } from 'rxjs';
 import { map, filter } from 'rxjs/operators';
 import { ResponseInterceptor } from 'src/common/interceptors/response.interceptor';
@@ -30,6 +31,7 @@ import { SkipThrottle, Throttle } from '@nestjs/throttler';
 export class GenerateAiController {
   constructor(
     private readonly generateAiService: GenerateAiService,
+    private readonly usersService: UsersService,
     private eventEmitter: EventEmitter2
   ) { }
 
@@ -72,18 +74,26 @@ export class GenerateAiController {
       throw new BadRequestException(`Jumlah variasi video harus antara 1-100. Kamu minta: ${dto.targetCount}`);
     }
 
-    const result = await this.generateAiService.processVideoVariations(
-      dto.images,
-      dto.productName,
-      dto.prompts,
-      dto.script,
-      dto.jobId,
-      dto.targetCount,
-      dto.voiceGender || 'female',
-      userId
-    );
+    await this.usersService.deductCredits(userId, dto.targetCount);
 
-    return result;
+    try {
+      const result = await this.generateAiService.processVideoVariations(
+        dto.images,
+        dto.productName,
+        dto.prompts,
+        dto.script,
+        dto.jobId,
+        dto.targetCount,
+        dto.voiceGender || 'female',
+        userId
+      );
+
+      return result;
+    } catch (error) {
+      // Refund credits
+      await this.usersService.addCredits(userId, dto.targetCount);
+      throw error;
+    }
   }
 
   @Throttle({ upload: { limit: 15, ttl: 60000 } })
